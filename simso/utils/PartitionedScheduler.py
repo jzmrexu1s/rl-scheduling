@@ -1,4 +1,5 @@
 from simso.core import Scheduler
+from simso.core.Scheduler import PartitionFailedException
 
 
 def best_fit(scheduler, task_list=None):
@@ -17,7 +18,7 @@ def best_fit(scheduler, task_list=None):
         while cpus[j][1] * task.period + float(task.wcet) > task.period:
             j += 1
             if j >= len(scheduler.processors):
-                print("oops bin packing failed.")
+                # print("oops bin packing failed.")
                 return False
 
         # Affect it to the task.
@@ -48,7 +49,7 @@ def worst_fit(scheduler, task_list=None):
         while cpus[j][1] * task.period + float(task.wcet) > task.period:
             j += 1
             if j >= len(scheduler.processors):
-                print("oops bin packing failed.")
+                # print("oops bin packing failed.")
                 return False
 
         # Affect it to the task.
@@ -80,7 +81,7 @@ def next_fit(scheduler, task_list=None):
             j = (j + 1) % len(scheduler.processors)
             k += 1
             if k >= len(scheduler.processors):
-                print("oops bin packing failed.")
+                # print("oops bin packing failed.")
                 return False
 
         # Affect it to the task.
@@ -109,7 +110,7 @@ def first_fit(scheduler, task_list=None):
         while cpus[j][1] * task.period + float(task.wcet) > task.period:
             j += 1
             if j >= len(scheduler.processors):
-                print("oops bin packing failed.")
+                # print("oops bin packing failed.")
                 return False
 
         # Affect it to the task.
@@ -191,7 +192,9 @@ class PartitionedScheduler(Scheduler):
             self.map_cpu_sched[cpu.identifier] = sched
 
         self._packer = packer
-        assert self.packer(), "Packing failed"
+        if not self.packer():
+            raise PartitionFailedException
+        # assert self.packer(), "Packing failed"
 
         for cpu in self.processors:
             self.map_cpu_sched[cpu.identifier].init()

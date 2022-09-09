@@ -12,6 +12,9 @@ from simso.core.SchedulerEvent import SchedulerBeginScheduleEvent, \
     SchedulerEndTerminateEvent
 from SimPy.Simulation import Monitor
 
+class PartitionFailedException(Exception):
+    def __init__(self):
+        pass
 
 class SchedulerInfo(object):
     """
@@ -19,7 +22,7 @@ class SchedulerInfo(object):
     scheduling overhead) and do the dynamic loading of the scheduler.
     """
     def __init__(self, clas='', overhead=0, overhead_activate=0,
-                 overhead_terminate=0, fields=None):
+                 overhead_terminate=0, fields=None, train=False, rl=False):
         """
         Args:
             - `name`: Name of the scheduler.
@@ -35,6 +38,8 @@ class SchedulerInfo(object):
         self.overhead_terminate = overhead_terminate
         self.data = {}
         self.fields_types = {}
+        self.train = train
+        self.rl = rl
 
         if fields:
             for key, value in fields.items():
@@ -145,6 +150,8 @@ class Scheduler(object):
         self.overhead_activate = scheduler_info.overhead_activate
         self.overhead_terminate = scheduler_info.overhead_terminate
         self.data = scheduler_info.data
+        self.train = scheduler_info.train
+        self.rl = scheduler_info.rl
         self.monitor = Monitor(name="MonitorScheduler", sim=sim)
 
     def init(self):

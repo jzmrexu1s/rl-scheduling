@@ -1,8 +1,10 @@
 # coding=utf-8
 
+import math
 from SimPy.Simulation import Process, hold, passivate
 from simso.core.JobEvent import JobEvent
 from math import ceil
+from simso.core.tools import AbortException
 
 
 class Job(Process):
@@ -44,6 +46,8 @@ class Job(Process):
         self._monitor = monitor
         self._etm = etm
         self._was_running_on = task.cpu
+        self._cpu_speed = self.cpu.speed
+        self.energy_consumption = 0
 
         self._on_activate()
 
@@ -68,7 +72,7 @@ class Job(Process):
             self._is_preempted = False
 
         self.cpu.was_running = self
-
+        self._cpu_speed = self.cpu.speed
         self._monitor.observe(JobEvent(self, JobEvent.EXECUTE, self.cpu))
         self._sim.logger.log("{} Executing on {}".format(
             self.name, self._task.cpu.name), kernel=True)
@@ -77,16 +81,17 @@ class Job(Process):
         if self._last_exec is not None:
             self._computation_time += self.sim.now() - self._last_exec
         self._last_exec = None
+        self.energy_consumption = 1.52 * math.pow(self.cpu_speed, 3) + 0.08
 
     def _on_preempted(self):
         self._on_stop_exec()
         self._etm.on_preempted(self)
         self._is_preempted = True
         self._was_running_on = self.cpu
-
         self._monitor.observe(JobEvent(self, JobEvent.PREEMPTED))
         self._sim.logger.log(self.name + " Preempted! ret: " +
                              str(self.interruptLeft), kernel=True)
+        self._sim.set_reward(-2)
 
     def _on_terminated(self):
         self._on_stop_exec()
@@ -97,6 +102,7 @@ class Job(Process):
         self._task.end_job(self)
         self._task.cpu.terminate(self)
         self._sim.logger.log(self.name + " Terminated.", kernel=True)
+        self._sim.set_reward(5)
 
     def _on_abort(self):
         self._on_stop_exec()
@@ -107,6 +113,9 @@ class Job(Process):
         self._task.end_job(self)
         self._task.cpu.terminate(self)
         self._sim.logger.log("Job " + str(self.name) + " aborted! ret:" + str(self.ret))
+        self._sim.set_reward(-5)
+        if self._sim.scheduler.rl and self._sim.scheduler.train: return
+        raise AbortException
 
     def is_running(self):
         """
@@ -276,6 +285,10 @@ class Job(Process):
         Equivalent to ``self.task.deadline``.
         """
         return self._task.deadline
+
+    @property
+    def cpu_speed(self):
+        return self._cpu_speed
 
     @property
     def pred(self):

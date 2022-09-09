@@ -62,6 +62,7 @@ class TaskInfo(object):
         self.list_activation_dates = list_activation_dates
         self.data = data
         self.preemption_cost = preemption_cost
+        self._energy_consumption = 0
 
     @property
     def csdp(self):
@@ -77,6 +78,13 @@ class TaskInfo(object):
         Stack distance profile input file.
         """
         return self._stack_file
+
+    @property
+    def energy_consumption(self):
+        return self._energy_consumption
+
+    def set_energy_consumption(self, energy_consumption):
+        self._energy_consumption = energy_consumption
 
     def set_stack_file(self, stack_file, cur_dir):
         """
@@ -249,6 +257,10 @@ class GenericTask(Process):
         """
         return self._jobs
 
+    @property
+    def energy_consumption(self):
+        return self._task_info.energy_consumption
+
     def end_job(self, job):
         self._last_cpu = self.cpu
         if self.followed_by:
@@ -288,6 +300,10 @@ class GenericTask(Process):
     def _init(self):
         if self.cpu is None:
             self.cpu = self._sim.processors[0]
+
+    def calculate_energy(self):
+        self._task_info.set_energy_consumption(sum([item.energy_consumption for item in self.jobs]))
+        return self._task_info.energy_consumption
 
 
 class ATask(GenericTask):

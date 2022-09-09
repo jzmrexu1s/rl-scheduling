@@ -7,6 +7,8 @@ from simso.core.Timer import Timer
 from simso.core.etm import execution_time_models
 from simso.core.Logger import Logger
 from simso.core.results import Results
+import numpy as np
+from tools import *
 
 
 class Model(Simulation):
@@ -32,6 +34,8 @@ class Model(Simulation):
         proc_info_list = configuration.proc_info_list
         self._cycles_per_ms = configuration.cycles_per_ms
         self.scheduler = configuration.scheduler_info.instantiate(self)
+        self._energy_consumption = 0
+        self._reward = 0
 
         try:
             self._etm = execution_time_models[configuration.etm](
@@ -43,6 +47,8 @@ class Model(Simulation):
         self._task_list = []
         for task_info in task_info_list:
             self._task_list.append(Task(self, task_info))
+
+        self._obs = self.calculate_obs()
 
         # Init the processor class. This will in particular reinit the
         # identifiers to 0.
@@ -123,14 +129,41 @@ class Model(Simulation):
         """
         return self._duration
 
+    @property
+    def energy_consumption(self):
+        return self._energy_consumption
+
+    @property
+    def obs(self):
+        return self._obs
+    
+    @property
+    def reward(self):
+        return self._reward
+
     def _on_tick(self):
         if self._callback:
             self._callback(self.now())
 
-    def run_model(self):
+    def _calculate_jobs_count(self):
+        count = 0
+        for task in self.task_list:
+            count += len(task.jobs)
+        return count
+
+    def set_reward(self, reward):
+        self._reward += reward
+
+    def reset_reward(self):
+        self._reward = 0
+
+
+    def run_model(self, load_rl=None):
         """ Execute the simulation."""
         self.initialize()
         self.scheduler.init()
+        if load_rl is not None:
+            self.load_model(load_rl)
         self.progress.start()
 
         for cpu in self._processors:
@@ -143,7 +176,38 @@ class Model(Simulation):
             self.simulate(until=self._duration)
         finally:
             self._etm.update()
+            self.calculate_energy()
 
             if self.now() > 0:
                 self.results = Results(self)
                 self.results.end()
+
+    def calculate_energy(self):
+        for task in self._task_list:
+            task.calculate_energy()
+        self._energy_consumption = sum([item.energy_consumption for item in self._task_list])
+        return self._energy_consumption
+
+    def calculate_obs(self):
+        wcets = [task.wcet for task in self._task_list]
+        deadlines = [task.deadline for task in self._task_list]
+        obs = []
+        for task in self._task_list:
+            for job in task.jobs:
+                obs.append(
+                    [
+                        Norm(task.wcet, min(wcets), max(wcets)),
+                        Norm(task.deadline, min(deadlines), max(deadlines)),
+                        Norm(np.mean(wcets), min(wcets), max(wcets)),
+                        Norm(np.mean(deadlines), min(deadlines), max(deadlines))
+                    ]
+                )
+        self._obs = np.array(obs)
+
+    def load_model(self, path):
+        if self.scheduler.rl:
+            self.scheduler.load_model(path)
+    
+    def save_model(self, path):
+        if self.scheduler.rl:
+            self.scheduler.save_model(path)

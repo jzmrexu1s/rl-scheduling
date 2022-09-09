@@ -57,6 +57,7 @@ class Configuration(object):
             self._scheduler_info = parser.scheduler_info
             self.penalty_preemption = parser.penalty_preemption
             self.penalty_migration = parser.penalty_migration
+            self.state_dim = parser.state_dim
         else:
             self.etm = "wcet"
             self.duration = 100000000
@@ -69,6 +70,7 @@ class Configuration(object):
             self._proc_info_list = []
             self.proc_data_fields = {}
             self.memory_access_time = 100
+            self.state_dim = 5
             self._scheduler_info = SchedulerInfo()
         self.calc_penalty_cache()
         self._set_filename(filename)
@@ -131,6 +133,7 @@ class Configuration(object):
 
     def check_scheduler(self):
         cls = self._scheduler_info.get_cls()
+        # print(cls)
         assert cls is not None, \
             "A scheduler is needed."
         assert issubclass(cls, Scheduler), \

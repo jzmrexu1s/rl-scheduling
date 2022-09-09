@@ -34,5 +34,5 @@ class EDF(Scheduler):
 
             if (cpu_min.running is None or
                     cpu_min.running.absolute_deadline > job.absolute_deadline):
-                print(self.sim.now(), job.name, cpu_min.name)
+                # print(self.sim.now(), job.name, cpu_min.name)
                 return (job, cpu_min)
