@@ -58,3 +58,8 @@ target/
 
 # Pycharm stuff
 .idea
+
+tests/model
+tests/log
+.DS_Store
+tests/simulation_generated.xml
