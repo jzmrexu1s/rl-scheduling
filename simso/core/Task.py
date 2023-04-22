@@ -101,6 +101,17 @@ class TaskInfo(object):
             stack = None
         return stack
 
+class MCTaskInfo(TaskInfo):
+    def __init__(self, name, identifier, task_type, abort_on_miss, period,
+                 activation_date, n_instr, mix, stack_file, wcet, acet,
+                 et_stddev, deadline, base_cpi, followed_by,
+                 list_activation_dates, preemption_cost, data, mc_wcets, criticality):
+        super(MCTaskInfo, self).__init__(name, identifier, task_type, abort_on_miss, period,
+                 activation_date, n_instr, mix, stack_file, wcet, acet,
+                 et_stddev, deadline, base_cpi, followed_by,
+                 list_activation_dates, preemption_cost, data)
+        self.mc_wcets = mc_wcets
+        self.criticality = criticality
 
 class GenericTask(Process):
     """
@@ -289,6 +300,17 @@ class GenericTask(Process):
         if self.cpu is None:
             self.cpu = self._sim.processors[0]
 
+class GenericMCTask(GenericTask):
+    
+    @property
+    def mc_wcets(self):
+        return self._task_info.mc_wcets
+    
+    @property
+    def criticality(self):
+        return self._task_info.criticality
+    
+
 
 class ATask(GenericTask):
     """
@@ -339,12 +361,68 @@ class SporadicTask(GenericTask):
     @property
     def list_activation_dates(self):
         return self._task_info.list_activation_dates
+    
+class MCATask(GenericMCTask):
+    """
+    Non-periodic Task process. Inherits from :class:`GenericTask`. The job is
+    created by another task.
+    """
+    fields = ['deadline', 'wcet']
+
+    def execute(self):
+        self._init()
+        yield passivate, self
+
+
+class MCPTask(GenericMCTask):
+    """
+    Periodic Task process. Inherits from :class:`GenericTask`. The jobs are
+    created periodically.
+    """
+    fields = ['activation_date', 'period', 'deadline', 'wcet']
+
+    def execute(self):
+        self._init()
+        # wait the activation date.
+        yield hold, self, int(self._task_info.activation_date *
+                              self._sim.cycles_per_ms)
+
+        while True:
+            #print self.sim.now(), "activate", self.name
+            self.create_job()
+            yield hold, self, int(self.period * self._sim.cycles_per_ms)
+
+
+class MCSporadicTask(GenericMCTask):
+    """
+    Sporadic Task process. Inherits from :class:`GenericTask`. The jobs are
+    created using a list of activation dates.
+    """
+    fields = ['list_activation_dates', 'deadline', 'wcet']
+
+    def execute(self):
+
+        self._init()
+        for ndate in self.list_activation_dates:
+            yield hold, self, int(ndate * self._sim.cycles_per_ms) \
+                - self._sim.now()
+            self.create_job()
+
+    @property
+    def list_activation_dates(self):
+        return self._task_info.list_activation_dates
 
 
 task_types = {
     "Periodic": PTask,
     "APeriodic": ATask,
     "Sporadic": SporadicTask
+}
+
+mc_task_types = {
+    "Periodic": MCPTask,
+    "APeriodic": MCATask,
+    "Sporadic": MCSporadicTask
 }
 
 task_types_names = ["Periodic", "APeriodic", "Sporadic"]
@@ -355,5 +433,6 @@ def Task(sim, task_info):
     Task factory. Return and instantiate the correct class according to the
     task_info.
     """
-
+    if (sim.mc):
+        return mc_task_types[task_info.task_type](sim, task_info)
     return task_types[task_info.task_type](sim, task_info)
