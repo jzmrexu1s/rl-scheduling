@@ -105,12 +105,12 @@ class MCTaskInfo(TaskInfo):
     def __init__(self, name, identifier, task_type, abort_on_miss, period,
                  activation_date, n_instr, mix, stack_file, wcet, acet,
                  et_stddev, deadline, base_cpi, followed_by,
-                 list_activation_dates, preemption_cost, data, mc_wcets, criticality):
+                 list_activation_dates, preemption_cost, data, wcet_high, criticality):
         super(MCTaskInfo, self).__init__(name, identifier, task_type, abort_on_miss, period,
                  activation_date, n_instr, mix, stack_file, wcet, acet,
                  et_stddev, deadline, base_cpi, followed_by,
                  list_activation_dates, preemption_cost, data)
-        self.mc_wcets = mc_wcets
+        self.wcet_high = wcet_high
         self.criticality = criticality
 
 class GenericTask(Process):
@@ -303,8 +303,8 @@ class GenericTask(Process):
 class GenericMCTask(GenericTask):
     
     @property
-    def mc_wcets(self):
-        return self._task_info.mc_wcets
+    def wcet_high(self):
+        return self._task_info.wcet_high
     
     @property
     def criticality(self):
