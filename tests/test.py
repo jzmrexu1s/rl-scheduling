@@ -18,11 +18,11 @@ def main(argv):
 
         # Add tasks:
         configuration.add_task(name="T1", identifier=1, period=7,
-                               activation_date=0, wcet=3, deadline=7, wcet_high=5, criticality="LO")
+                               activation_date=0, wcet=3, deadline=7, wcet_high=5, criticality="LO", deadline_offset=2)
         configuration.add_task(name="T2", identifier=2, period=12,
-                               activation_date=0, wcet=3, deadline=12, wcet_high=5, criticality="LO")
+                               activation_date=0, wcet=3, deadline=12, wcet_high=5, criticality="LO", deadline_offset=2)
         configuration.add_task(name="T3", identifier=3, period=20,
-                               activation_date=0, wcet=5, deadline=20, wcet_high=5, criticality="LO")
+                               activation_date=0, wcet=5, deadline=20, wcet_high=5, criticality="LO", deadline_offset=2)
 
         # Add a processor:
         configuration.add_processor(name="CPU 1", identifier=1)
@@ -37,7 +37,7 @@ def main(argv):
     # Init a model from the configuration.
     model = Model(configuration)
 
-    print(model.task_list[0].wcet_high)
+    print(model.task_list[0].deadline_offset)
 
     # Execute the simulation.
     # model.run_model()
