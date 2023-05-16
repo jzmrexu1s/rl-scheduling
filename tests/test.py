@@ -12,24 +12,22 @@ def main(argv):
         # Manual configuration:
         configuration = Configuration()
 
-        configuration.duration = 420 * configuration.cycles_per_ms
+        configuration.duration = 100 * configuration.cycles_per_ms
 
         configuration.mc = True
 
         # Add tasks:
-        configuration.add_task(name="T1", identifier=1, period=7,
-                               activation_date=0, wcet=3, deadline=7, wcet_high=5, criticality="LO", deadline_offset=2)
-        configuration.add_task(name="T2", identifier=2, period=12,
-                               activation_date=0, wcet=3, deadline=12, wcet_high=5, criticality="LO", deadline_offset=2)
-        configuration.add_task(name="T3", identifier=3, period=20,
-                               activation_date=0, wcet=5, deadline=20, wcet_high=5, criticality="LO", deadline_offset=2)
+        configuration.add_task(name="T1", identifier=1, period=9,
+                               activation_date=0, wcet=4, deadline=9, wcet_high=2, criticality="LO", deadline_offset=0)
+        configuration.add_task(name="T2", identifier=2, period=10,
+                               activation_date=0, wcet=4, deadline=10, wcet_high=7, criticality="HI", deadline_offset=-3)
 
         # Add a processor:
         configuration.add_processor(name="CPU 1", identifier=1)
 
         # Add a scheduler:
         #configuration.scheduler_info.filename = "examples/RM.py"
-        configuration.scheduler_info.clas = "simso.schedulers.RM"
+        configuration.scheduler_info.clas = "simso.schedulers.EDF_VD_mono"
 
     # Check the config before trying to run it.
     configuration.check_all()
@@ -37,10 +35,10 @@ def main(argv):
     # Init a model from the configuration.
     model = Model(configuration)
 
-    print(model.task_list[0].deadline_offset)
+    # print(model.task_list[0].deadline_offset)
 
     # Execute the simulation.
-    # model.run_model()
+    model.run_model()
 
     # Print logs.
     for log in model.logs:
