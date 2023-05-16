@@ -3,6 +3,7 @@ Earliest Deadline First algorithm for uniprocessor architectures, supporting vir
 """
 from simso.core import Scheduler
 from simso.schedulers import scheduler
+import time
 
 @scheduler("simso.schedulers.EDF_VD_mono")
 class EDF_VD_mono(Scheduler):
@@ -11,6 +12,8 @@ class EDF_VD_mono(Scheduler):
 
     def on_activate(self, job):
         self.ready_list.append(job)
+        job.acet = 5
+        print(job.acet, '  ', time.time() )
         job.cpu.resched()
 
     def on_terminated(self, job):

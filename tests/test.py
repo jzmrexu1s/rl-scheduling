@@ -16,6 +16,8 @@ def main(argv):
 
         configuration.mc = True
 
+        configuration.etm = 'injectacet'
+
         # Add tasks:
         configuration.add_task(name="T1", identifier=1, period=9,
                                activation_date=0, wcet=4, deadline=9, wcet_high=2, criticality="LO", deadline_offset=0)

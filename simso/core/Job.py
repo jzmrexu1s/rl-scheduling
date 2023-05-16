@@ -9,7 +9,7 @@ class Job(Process):
     """The Job class simulate the behavior of a real Job. This *should* only be
     instantiated by a Task."""
 
-    def __init__(self, task, name, pred, monitor, etm, sim):
+    def __init__(self, task, name, pred, monitor, etm, sim, acet=None):
         """
         Args:
             - `task`: The parent :class:`task <simso.core.Task.Task>`.
@@ -47,6 +47,7 @@ class Job(Process):
         self._deadline_offset = 0
         if task.deadline_offset:
             self._deadline_offset = task.deadline_offset
+        self._acet = acet if acet else task.wcet
 
         self._on_activate()
 
@@ -287,6 +288,15 @@ class Job(Process):
     @property
     def deadline_offset(self):
         return self._deadline_offset
+    
+    @property
+    def acet(self):
+        return self._acet
+    
+    @acet.setter
+    def acet(self, value):
+        self._acet = value
+
 
     def activate_job(self):
         self._start_date = self.sim.now()
