@@ -44,6 +44,9 @@ class Job(Process):
         self._monitor = monitor
         self._etm = etm
         self._was_running_on = task.cpu
+        self._deadline_offset = 0
+        if task.deadline_offset:
+            self._deadline_offset = task.deadline_offset
 
         self._on_activate()
 
@@ -280,6 +283,10 @@ class Job(Process):
     @property
     def pred(self):
         return self._pred
+    
+    @property
+    def deadline_offset(self):
+        return self._deadline_offset
 
     def activate_job(self):
         self._start_date = self.sim.now()
