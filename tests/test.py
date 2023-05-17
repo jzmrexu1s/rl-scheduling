@@ -20,9 +20,9 @@ def main(argv):
 
         # Add tasks:
         configuration.add_task(name="T1", identifier=1, period=9,
-                               activation_date=0, wcet=4, deadline=9, wcet_high=2, criticality="LO", deadline_offset=0)
+                               activation_date=0, wcet=4, deadline=9, wcet_high=2, criticality="LO", deadline_offset=0, abort_on_miss=True)
         configuration.add_task(name="T2", identifier=2, period=10,
-                               activation_date=0, wcet=4, deadline=10, wcet_high=7, criticality="HI", deadline_offset=-3)
+                               activation_date=0, wcet=4, deadline=10, wcet_high=7, criticality="HI", deadline_offset=-3, abort_on_miss=True)
 
         # Add a processor:
         configuration.add_processor(name="CPU 1", identifier=1)
