@@ -297,6 +297,9 @@ class Job(Process):
     def acet(self, value):
         self._acet = value
 
+    @property
+    def etm(self):
+        return self._etm
 
     def activate_job(self):
         self._start_date = self.sim.now()

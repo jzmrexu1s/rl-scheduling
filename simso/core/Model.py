@@ -7,6 +7,7 @@ from simso.core.Timer import Timer
 from simso.core.etm import execution_time_models
 from simso.core.Logger import Logger
 from simso.core.results import Results
+from simso.core.Env import Env
 
 
 class Model(Simulation):
@@ -74,6 +75,11 @@ class Model(Simulation):
         self.scheduler.processors = self._processors
         self.results = None
 
+        self._env = None
+        if self.mc:
+            self._env = Env(self)
+            
+
     def now_ms(self):
         return float(self.now()) / self._cycles_per_ms
 
@@ -109,6 +115,10 @@ class Model(Simulation):
         List of all the processors.
         """
         return self._processors
+    
+    @property
+    def env(self):
+        return self._env
 
     @property
     def task_list(self):

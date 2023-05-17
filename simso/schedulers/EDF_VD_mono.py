@@ -12,8 +12,6 @@ class EDF_VD_mono(Scheduler):
 
     def on_activate(self, job):
         self.ready_list.append(job)
-        job.acet = 5
-        print(job.acet, '  ', time.time() )
         job.cpu.resched()
 
     def on_terminated(self, job):
