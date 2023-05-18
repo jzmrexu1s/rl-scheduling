@@ -3,6 +3,7 @@
 from SimPy.Simulation import Process, hold, passivate
 from simso.core.JobEvent import JobEvent
 from math import ceil
+from simso.core.Timer import Timer
 
 
 class Job(Process):
@@ -53,11 +54,17 @@ class Job(Process):
 
         self.context_ok = True  # The context is ready to be loaded.
 
+        self.timer_overrun = Timer(self.sim, self._overrun_handler,
+                               (), self._task.wcet)
+
     def is_active(self):
         """
         Return True if the job is still active.
         """
         return self._end_date is None
+
+    def _overrun_handler(self):
+        print('overrun, ', self.actual_computation_time_cycles)
 
     def _on_activate(self):
         self._monitor.observe(JobEvent(self, JobEvent.ACTIVATE))
@@ -74,10 +81,12 @@ class Job(Process):
         self.cpu.was_running = self
 
         self._monitor.observe(JobEvent(self, JobEvent.EXECUTE, self.cpu))
+        self.timer_overrun.start()
         self._sim.logger.log("{} Executing on {}".format(
             self.name, self._task.cpu.name), kernel=True)
 
     def _on_stop_exec(self):
+        self.timer_overrun.stop()
         if self._last_exec is not None:
             self._computation_time += self.sim.now() - self._last_exec
         self._last_exec = None

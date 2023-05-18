@@ -12,7 +12,7 @@ def main(argv):
         # Manual configuration:
         configuration = Configuration()
 
-        configuration.duration = 100 * configuration.cycles_per_ms
+        configuration.duration = 10 * configuration.cycles_per_ms
 
         configuration.mc = True
 
