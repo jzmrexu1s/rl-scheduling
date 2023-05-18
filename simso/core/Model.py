@@ -78,6 +78,7 @@ class Model(Simulation):
         self._env = None
         if self.mc:
             self._env = Env(self)
+        self._mode = LO
             
 
     def now_ms(self):
@@ -133,6 +134,13 @@ class Model(Simulation):
         Duration of the simulation.
         """
         return self._duration
+    
+    @property
+    def mode(self):
+        """
+        Mixed criticality mode.
+        """
+        return self._mode
 
     def _on_tick(self):
         if self._callback:

@@ -54,7 +54,7 @@ class Job(Process):
 
         self.context_ok = True  # The context is ready to be loaded.
 
-        self.timer_overrun = Timer(self.sim, self._overrun_handler,
+        self.timer_overrun = Timer(self.sim, self._on_overrun,
                                (), self._task.wcet)
 
     def is_active(self):
@@ -63,8 +63,8 @@ class Job(Process):
         """
         return self._end_date is None
 
-    def _overrun_handler(self):
-        print('overrun, ', self.actual_computation_time_cycles)
+    def _on_overrun(self):
+        self._sim.logger.log(self.name + " Overrun!", kernel=True)
 
     def _on_activate(self):
         self._monitor.observe(JobEvent(self, JobEvent.ACTIVATE))
