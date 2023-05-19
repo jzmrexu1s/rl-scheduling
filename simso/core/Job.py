@@ -4,6 +4,7 @@ from SimPy.Simulation import Process, hold, passivate
 from simso.core.JobEvent import JobEvent
 from math import ceil
 from simso.core.Timer import Timer
+from simso.core.Criticality import Criticality
 
 
 class Job(Process):
@@ -45,25 +46,26 @@ class Job(Process):
         self._monitor = monitor
         self._etm = etm
         self._was_running_on = task.cpu
-        self._deadline_offset = 0
-        if task.deadline_offset:
-            self._deadline_offset = task.deadline_offset
-        self._acet = acet if acet else task.wcet
+        self._acet = acet if acet else self.wcet
 
         self._on_activate()
 
         self.context_ok = True  # The context is ready to be loaded.
 
         self.timer_overrun = Timer(self.sim, self._on_overrun,
-                               (), self._task.wcet)
+                               (), self.wcet)
 
     def is_active(self):
         """
         Return True if the job is still active.
         """
         return self._end_date is None
+    
+    def renew_deadline_VD(self):
+        self._absolute_deadline = self._absolute_deadline - self._task.deadline_offset
 
     def _on_overrun(self):
+        self._sim.handle_overrun_VD()
         self._sim.logger.log(self.name + " Overrun!", kernel=True)
 
     def _on_activate(self):
@@ -256,7 +258,9 @@ class Job(Process):
         Worst-Case Execution Time in milliseconds.
         Equivalent to ``self.task.wcet``.
         """
-        return self._task.wcet
+        if self._sim.mode == Criticality.LO:
+            return self._task.wcet
+        return self._task.wcet_high
 
     @property
     def activation_date(self):
@@ -293,10 +297,6 @@ class Job(Process):
     @property
     def pred(self):
         return self._pred
-    
-    @property
-    def deadline_offset(self):
-        return self._deadline_offset
     
     @property
     def acet(self):

@@ -12,7 +12,7 @@ def main(argv):
         # Manual configuration:
         configuration = Configuration()
 
-        configuration.duration = 10 * configuration.cycles_per_ms
+        configuration.duration = 20 * configuration.cycles_per_ms
 
         configuration.mc = True
 
@@ -20,9 +20,9 @@ def main(argv):
 
         # Add tasks:
         configuration.add_task(name="T1", identifier=1, period=9,
-                               activation_date=0, wcet=4, deadline=9, wcet_high=2, criticality="LO", deadline_offset=0, abort_on_miss=True)
-        configuration.add_task(name="T2", identifier=2, period=10,
-                               activation_date=0, wcet=4, deadline=10, wcet_high=7, criticality="HI", deadline_offset=-3, abort_on_miss=True)
+                               activation_date=0, wcet=1, deadline=5, wcet_high=4, criticality="LO", deadline_offset=-2, abort_on_miss=True)
+        # configuration.add_task(name="T2", identifier=2, period=10,
+        #                        activation_date=0, wcet=4, deadline=10, wcet_high=7, criticality="HI", deadline_offset=-3, abort_on_miss=True)
 
         # Add a processor:
         configuration.add_processor(name="CPU 1", identifier=1)

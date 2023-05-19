@@ -21,7 +21,7 @@ class EDF_VD_mono(Scheduler):
     def schedule(self, cpu):
         if self.ready_list:
             # job with the highest priority
-            job = min(self.ready_list, key=lambda x: x.absolute_deadline + x.deadline_offset)
+            job = min(self.ready_list, key=lambda x: x.absolute_deadline)
         else:
             job = None
 

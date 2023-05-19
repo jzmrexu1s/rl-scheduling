@@ -5,6 +5,7 @@ from SimPy.Simulation import Process, Monitor, hold, passivate
 from simso.core.Job import Job
 from simso.core.Timer import Timer
 from .CSDP import CSDP
+from simso.core.Criticality import Criticality
 
 import os
 import os.path
@@ -302,6 +303,40 @@ class GenericTask(Process):
             self.cpu = self._sim.processors[0]
 
 class GenericMCTask(GenericTask):
+
+    def __init__(self, sim, task_info):
+        super(GenericMCTask, self).__init__(sim, task_info)
+        self._timer_deadline = None
+
+    def create_job(self, pred=None):
+        """
+        Create a new job from this task. This should probably not be used
+        directly by a scheduler.
+        """
+        self._job_count += 1
+        job = Job(self, "{}_{}".format(self.name, self._job_count), pred,
+                  monitor=self._monitor, etm=self._etm, sim=self.sim)
+
+        if len(self._activations_fifo) == 0:
+            self.job = job
+            self.sim.activate(job, job.activate_job())
+        self._activations_fifo.append(job)
+        self._jobs.append(job)
+        self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
+                            (self, job), self.deadline)
+        self._timer_deadline.start()
+
+    def renew_timer_deadline_VD(self):
+        self._timer_deadline.stop()
+        self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
+                               (self, self.job), self.deadline - self.job.computation_time)
+        self._timer_deadline.start()
+
+    @property
+    def wcet(self):
+        if self.sim.mode == Criticality.LO:
+            return self._task_info.wcet
+        return self._task_info.wcet_high
     
     @property
     def wcet_high(self):
@@ -315,6 +350,18 @@ class GenericMCTask(GenericTask):
     def deadline_offset(self):
         return self._task_info.deadline_offset
     
+    @property
+    def timer_deadline(self):
+        return self._timer_deadline
+    
+    @property
+    def deadline(self):
+        """
+        Deadline in milliseconds.
+        """
+        if self.sim.mode == Criticality.LO:
+            return self._task_info.deadline + self._task_info.deadline_offset
+        return self._task_info.deadline
 
 
 class ATask(GenericTask):

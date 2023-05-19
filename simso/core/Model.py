@@ -8,6 +8,7 @@ from simso.core.etm import execution_time_models
 from simso.core.Logger import Logger
 from simso.core.results import Results
 from simso.core.Env import Env
+from simso.core.Criticality import Criticality
 
 
 class Model(Simulation):
@@ -78,11 +79,27 @@ class Model(Simulation):
         self._env = None
         if self.mc:
             self._env = Env(self)
-        self._mode = LO
+        self._mode = Criticality.LO
             
 
     def now_ms(self):
         return float(self.now()) / self._cycles_per_ms
+    
+    def handle_overrun(self):
+        self.mode = Criticality.HI
+    
+    def handle_overrun_VD(self):
+        self.handle_overrun()
+        for task in self.task_list:
+            task.renew_timer_deadline_VD()
+            for job in task.jobs:
+                job.renew_deadline_VD()
+
+    def handle_reset(self):
+        self.mode = Criticality.LO
+    
+    def handle_reset_VD(self):
+        self.handle_reset()
 
     @property
     def logs(self):
@@ -141,6 +158,10 @@ class Model(Simulation):
         Mixed criticality mode.
         """
         return self._mode
+    
+    @mode.setter
+    def mode(self, value):
+        self._mode = value
 
     def _on_tick(self):
         if self._callback:
