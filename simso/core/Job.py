@@ -6,6 +6,10 @@ from math import ceil
 from simso.core.Timer import Timer
 from simso.core.Criticality import Criticality
 
+"""
+MC behavior refers to: 
+The preemptive uniprocessor scheduling of mixed-criticality implicit-deadline sporadic task systems
+"""
 
 class Job(Process):
     """The Job class simulate the behavior of a real Job. This *should* only be

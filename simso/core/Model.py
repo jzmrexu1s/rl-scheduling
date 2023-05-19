@@ -10,6 +10,10 @@ from simso.core.results import Results
 from simso.core.Env import Env
 from simso.core.Criticality import Criticality
 
+"""
+MC behavior refers to: 
+The preemptive uniprocessor scheduling of mixed-criticality implicit-deadline sporadic task systems
+"""
 
 class Model(Simulation):
     """
