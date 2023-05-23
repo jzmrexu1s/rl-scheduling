@@ -90,6 +90,7 @@ class Model(Simulation):
         return float(self.now()) / self._cycles_per_ms
     
     def handle_overrun(self):
+        self.logger.log("Set mode to HI", kernel=True)
         self.mode = Criticality.HI
     
     def handle_VD_overrun(self):
@@ -100,6 +101,7 @@ class Model(Simulation):
                 job.renew_deadline_VD_overrun()
 
     def handle_reset(self):
+        self.logger.log("Set mode to LO", kernel=True)
         self.mode = Criticality.LO
     
     def handle_VD_reset(self):

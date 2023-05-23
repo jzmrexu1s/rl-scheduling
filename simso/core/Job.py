@@ -72,9 +72,9 @@ class Job(Process):
         self._absolute_deadline = self._absolute_deadline + self._task.deadline_offset
 
     def _on_overrun(self):
-        self._sim.handle_VD_overrun()
         self._sim.logger.log(self.name + " Overrun! Current tasks: " + str([item.name for item in self.sim.task_list]), kernel=True)
-
+        self._sim.handle_VD_overrun()
+        
     def _on_activate(self):
         self._monitor.observe(JobEvent(self, JobEvent.ACTIVATE))
         self._sim.logger.log(self.name + " Activated.", kernel=True)

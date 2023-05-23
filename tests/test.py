@@ -2,7 +2,11 @@ import sys
 sys.path.append("..")
 from simso.core import Model
 from simso.configuration import Configuration
-
+from PyQt5 import QtCore, QtWidgets
+from simsogui.Gantt import GanttConfigure, create_gantt_window
+from PyQt5.QtWidgets import QApplication
+from simsogui.SimulatorWindow import SimulatorWindow
+import optparse
 
 def main(argv):
     if len(argv) == 2:
@@ -47,5 +51,23 @@ def main(argv):
     # Print logs.
     for log in model.logs:
         print(log)
+
+    # app = QtWidgets.QApplication(sys.argv)
+    # gantt = create_gantt_window(model)
+    # ex = GanttConfigure(model, 0, 10000)
+    # if ex.exec_():
+    #     print(ex)
+
+    parser = optparse.OptionParser()
+    parser.add_option('-t', '--text', help='run script instead of a GUI',
+                      action='store', dest='script')
+    (opts, args) = parser.parse_args()
+    app = QtWidgets.QApplication(args)
+    app.setOrganizationName("SimSo")
+    app.setApplicationName("SimSo")
+    gantt = create_gantt_window(model)
+    gantt.show()
+    sys.exit(app.exec_())
+
 
 main(sys.argv)

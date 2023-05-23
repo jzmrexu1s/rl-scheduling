@@ -32,7 +32,7 @@ class EDF_VD_mono(Scheduler):
                 job = min(self.ready_list, key=lambda x: x.absolute_deadline)
         # if job:
             # self.sim.logger.log(str(self.sim.mode) + " Select " + job.name, kernel=True)
-        else:
+        if not job:
             # self.sim.logger.log(str(self.sim.mode) + " Select None", kernel=True)
             if self.sim.mode == Criticality.HI:
                 self.sim.handle_VD_reset()
