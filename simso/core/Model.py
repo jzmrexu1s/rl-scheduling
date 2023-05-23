@@ -95,15 +95,19 @@ class Model(Simulation):
     def handle_overrun_VD(self):
         self.handle_overrun()
         for task in self.task_list:
-            task.renew_timer_deadline_VD()
+            task.renew_timer_deadline_VD_overrun()
             for job in task.jobs:
-                job.renew_deadline_VD()
+                job.renew_deadline_VD_overrun()
 
     def handle_reset(self):
         self.mode = Criticality.LO
     
     def handle_reset_VD(self):
         self.handle_reset()
+        for task in self.task_list:
+            task.renew_timer_deadline_VD_reset()
+            for job in task.jobs:
+                job.renew_deadline_VD_reset()
 
     @property
     def logs(self):

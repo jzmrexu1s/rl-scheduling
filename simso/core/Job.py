@@ -65,12 +65,15 @@ class Job(Process):
         """
         return self._end_date is None
     
-    def renew_deadline_VD(self):
+    def renew_deadline_VD_overrun(self):
         self._absolute_deadline = self._absolute_deadline - self._task.deadline_offset
+
+    def renew_deadline_VD_reset(self):
+        self._absolute_deadline = self._absolute_deadline + self._task.deadline_offset
 
     def _on_overrun(self):
         self._sim.handle_overrun_VD()
-        self._sim.logger.log(self.name + " Overrun!", kernel=True)
+        self._sim.logger.log(self.name + " Overrun! Current tasks: " + str([item.name for item in self.sim.task_list]), kernel=True)
 
     def _on_activate(self):
         self._monitor.observe(JobEvent(self, JobEvent.ACTIVATE))

@@ -117,7 +117,7 @@ class MCTaskInfo(TaskInfo):
                  et_stddev, deadline, base_cpi, followed_by,
                  list_activation_dates, preemption_cost, data)
         self.wcet_high = wcet_high
-        self.criticality = criticality
+        self.criticality = Criticality.getCriticalityByStr(criticality)
         self.deadline_offset = deadline_offset
 
 class GenericTask(Process):
@@ -331,11 +331,19 @@ class GenericMCTask(GenericTask):
                             (self, job), self.deadline)
         self._timer_deadline.start()
 
-    def renew_timer_deadline_VD(self):
+    def renew_timer_deadline_VD_overrun(self):
         self._timer_deadline.stop()
         self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
                                (self, self.job), self.deadline - self.job.computation_time)
         self._timer_deadline.start()
+
+    def renew_timer_deadline_VD_reset(self):
+        pass
+        # self._timer_deadline.stop()
+        # print("" + str(self.deadline) + " " + str(self.job.computation_time))
+        # self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
+        #                        (self, self.job), self.deadline - self.job.computation_time)
+        # self._timer_deadline.start()
 
     @property
     def wcet(self):
