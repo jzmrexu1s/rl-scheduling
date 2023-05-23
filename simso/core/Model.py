@@ -92,7 +92,7 @@ class Model(Simulation):
     def handle_overrun(self):
         self.mode = Criticality.HI
     
-    def handle_overrun_VD(self):
+    def handle_VD_overrun(self):
         self.handle_overrun()
         for task in self.task_list:
             task.renew_timer_deadline_VD_overrun()
@@ -102,7 +102,7 @@ class Model(Simulation):
     def handle_reset(self):
         self.mode = Criticality.LO
     
-    def handle_reset_VD(self):
+    def handle_VD_reset(self):
         self.handle_reset()
         for task in self.task_list:
             task.renew_timer_deadline_VD_reset()

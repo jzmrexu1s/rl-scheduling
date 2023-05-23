@@ -30,12 +30,12 @@ class EDF_VD_mono(Scheduler):
             else:
                 # job with the highest priority
                 job = min(self.ready_list, key=lambda x: x.absolute_deadline)
-        if job:
-            self.sim.logger.log(str(self.sim.mode) + " Select " + job.name, kernel=True)
+        # if job:
+            # self.sim.logger.log(str(self.sim.mode) + " Select " + job.name, kernel=True)
         else:
-            self.sim.logger.log(str(self.sim.mode) + " Select None", kernel=True)
+            # self.sim.logger.log(str(self.sim.mode) + " Select None", kernel=True)
             if self.sim.mode == Criticality.HI:
-                self.sim.handle_reset_VD()
-                self.sim.logger.log("Set mode to LO", kernel=True)
-                self.schedule(cpu)
+                self.sim.handle_VD_reset()
+                # self.sim.logger.log("Set mode to LO", kernel=True)
+                return self.schedule(cpu)
         return (job, cpu)

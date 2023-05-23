@@ -23,7 +23,9 @@ def main(argv):
                                activation_date=0, wcet=1, deadline=5, wcet_high=4, criticality="HI", deadline_offset=-2, abort_on_miss=True)
         configuration.add_task(name="T2", identifier=2, period=5,
                                activation_date=0, wcet=4, deadline=10, wcet_high=7, criticality="LO", deadline_offset=0, abort_on_miss=True)
-
+        
+        # T1 WCET_LO: 1, WCET_HI: 4, ACET: 4, deadline_LO: 3, deadline_HI: 5
+        # T2 WCET_LO: 4, WCET_HI: 7, ACET: 4, deadline_LO: 10, deadline_HI: 10
         # Add a processor:
         configuration.add_processor(name="CPU 1", identifier=1)
 
