@@ -56,8 +56,7 @@ class Job(Process):
 
         self.context_ok = True  # The context is ready to be loaded.
 
-        self.timer_overrun = Timer(self.sim, self._on_overrun,
-                               (), self.wcet)
+        self.timer_overrun = None
 
     def is_active(self):
         """
@@ -74,6 +73,8 @@ class Job(Process):
     def _on_overrun(self):
         self._sim.logger.log(self.name + " Overrun! Current tasks: " + str([item.name for item in self.sim.task_list]), kernel=True)
         self._sim.handle_VD_overrun()
+        self._task.cpu.overrun(self)
+        self._etm.on_overrun(self)
         
     def _on_activate(self):
         self._monitor.observe(JobEvent(self, JobEvent.ACTIVATE))
@@ -90,6 +91,8 @@ class Job(Process):
         self.cpu.was_running = self
 
         self._monitor.observe(JobEvent(self, JobEvent.EXECUTE, self.cpu))
+        self.timer_overrun = Timer(self.sim, self._on_overrun,
+                               (), self.wcet - self.computation_time)
         self.timer_overrun.start()
         self._sim.logger.log("{} Executing on {}".format(
             self.name, self._task.cpu.name), kernel=True)

@@ -33,6 +33,10 @@ class AbstractExecutionTimeModel(object):
         pass
 
     @abc.abstractmethod
+    def on_overrun(self, _):
+        pass
+
+    @abc.abstractmethod
     def get_ret(self, _):
         return
 

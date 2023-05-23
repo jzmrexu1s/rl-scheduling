@@ -12,11 +12,16 @@ class EDF_VD_mono(Scheduler):
         self.ready_list = []
 
     def on_activate(self, job):
+        # self.processors[0].set_speed(0.5)
         self.ready_list.append(job)
         job.cpu.resched()
 
     def on_terminated(self, job):
         self.ready_list.remove(job)
+        job.cpu.resched()
+
+    def on_overrun(self, job):
+        self.sim.logger.log("Resched when overrun", kernel=True)
         job.cpu.resched()
 
     def schedule(self, cpu):
@@ -30,8 +35,8 @@ class EDF_VD_mono(Scheduler):
             else:
                 # job with the highest priority
                 job = min(self.ready_list, key=lambda x: x.absolute_deadline)
-        # if job:
-            # self.sim.logger.log(str(self.sim.mode) + " Select " + job.name, kernel=True)
+        if job:
+            self.sim.logger.log(str(self.sim.mode) + " Select " + job.name, kernel=True)
         if not job:
             # self.sim.logger.log(str(self.sim.mode) + " Select None", kernel=True)
             if self.sim.mode == Criticality.HI:
