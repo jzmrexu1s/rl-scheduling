@@ -12,7 +12,6 @@ class EDF_VD_mono(Scheduler):
         self.ready_list = []
 
     def on_activate(self, job):
-        # self.processors[0].set_speed(0.5)
         self.ready_list.append(job)
         job.cpu.resched()
 

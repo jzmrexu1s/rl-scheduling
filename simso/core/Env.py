@@ -4,4 +4,4 @@ class Env(object):
     
     def now_acet(self, job):
         # return min(job.wcet * self._model.now_ms() / 10, job.wcet)
-        return 4
+        return job.wcet
