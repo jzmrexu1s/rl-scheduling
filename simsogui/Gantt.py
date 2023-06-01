@@ -416,8 +416,9 @@ class Gantt(QWidget):
         layout.addWidget(canvas)
 
     def closeEvent(self, event):
-        self.parent().hide()
-        event.ignore()
+        if self.parent():
+            self.parent().hide()
+            event.ignore()
 
 
 def create_gantt_window(sim):
