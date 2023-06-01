@@ -71,10 +71,12 @@ class Job(Process):
         self._absolute_deadline = self._absolute_deadline + self._task.deadline_offset
 
     def _on_overrun(self):
-        self._sim.logger.log(self.name + " Overrun! Current tasks: " + str([item.name for item in self.sim.task_list]), kernel=True)
-        self._sim.handle_VD_overrun()
-        self._task.cpu.overrun(self)
-        self._etm.on_overrun(self)
+        ret = self._etm.get_ret(self)
+        if ret > 0:
+            self._sim.logger.log(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret), kernel=True)
+            self._sim.handle_VD_overrun()
+            self._task.cpu.overrun(self)
+            self._etm.on_overrun(self)
         
     def _on_activate(self):
         self._monitor.observe(JobEvent(self, JobEvent.ACTIVATE))
@@ -91,14 +93,17 @@ class Job(Process):
         self.cpu.was_running = self
 
         self._monitor.observe(JobEvent(self, JobEvent.EXECUTE, self.cpu))
-        self.timer_overrun = Timer(self.sim, self._on_overrun,
-                               (), self.wcet - self.computation_time)
-        self.timer_overrun.start()
+        if self.sim.mc:
+            # print("set timer: wcet:", self.wcet, "computation time:", self.computation_time, "cpu speed:", self.cpu.speed, "timer: ", (self.wcet / self.cpu.speed) - self.computation_time)
+            self.timer_overrun = Timer(self.sim, self._on_overrun,
+                               (), (self.wcet / self.cpu.speed) - self.computation_time)
+            self.timer_overrun.start()
         self._sim.logger.log("{} Executing on {}".format(
             self.name, self._task.cpu.name), kernel=True)
 
     def _on_stop_exec(self):
-        self.timer_overrun.stop()
+        if self.sim.mc:
+            self.timer_overrun.stop()
         if self._last_exec is not None:
             self._computation_time += self.sim.now() - self._last_exec
         self._last_exec = None
