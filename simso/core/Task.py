@@ -363,6 +363,10 @@ class GenericMCTask(GenericTask):
     def deadline_offset(self):
         return self._task_info.deadline_offset
     
+    @deadline_offset.setter
+    def deadline_offset(self, value):
+        self._task_info.deadline_offset = value
+    
     @property
     def timer_deadline(self):
         return self._timer_deadline
