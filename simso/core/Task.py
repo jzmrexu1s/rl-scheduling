@@ -376,7 +376,7 @@ class GenericMCTask(GenericTask):
         """
         Deadline in milliseconds.
         """
-        if self.sim.mode == Criticality.LO:
+        if self.sim.mode == Criticality.LO and self.criticality == Criticality.HI:
             return self._task_info.deadline + self._task_info.deadline_offset
         return self._task_info.deadline
 
