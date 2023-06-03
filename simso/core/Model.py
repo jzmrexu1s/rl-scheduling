@@ -9,6 +9,7 @@ from simso.core.Logger import Logger
 from simso.core.results import Results
 from simso.core.Env import Env
 from simso.core.Criticality import Criticality
+from simso.core.SpeedLogger import SpeedLogger
 
 """
 MC behavior refers to: 
@@ -34,6 +35,7 @@ class Model(Simulation):
         """
         Simulation.__init__(self)
         self._logger = Logger(self)
+        self._speed_logger = SpeedLogger(self)
         task_info_list = configuration.task_info_list
         proc_info_list = configuration.proc_info_list
         self._cycles_per_ms = configuration.cycles_per_ms
@@ -172,6 +174,10 @@ class Model(Simulation):
     @mode.setter
     def mode(self, value):
         self._mode = value
+
+    @property
+    def speed_logger(self):
+        return self._speed_logger
 
     def _on_tick(self):
         if self._callback:

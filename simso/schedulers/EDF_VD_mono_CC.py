@@ -14,7 +14,7 @@ class EDF_VD_mono_CC(EDF_VD_mono):
             task.deadline_offset = task.deadline * self.x - task.deadline
 
     def set_speed_static(self, job):
-        print("f_LO_LO", self.static_f_LO_LO, "f_HI_LO", self.static_f_HI_LO, "f_HI_HI", self.static_f_HI_HI, "x", self.x)
+        # print("f_LO_LO", self.static_f_LO_LO, "f_HI_LO", self.static_f_HI_LO, "f_HI_HI", self.static_f_HI_HI, "x", self.x)
         if self.sim.mode == Criticality.HI and job.task.criticality == Criticality.HI:
             self.processors[0].set_speed(self.static_f_HI_HI)
         elif self.sim.mode == Criticality.LO and job.task.criticality == Criticality.HI:
@@ -37,7 +37,7 @@ class EDF_VD_mono_CC(EDF_VD_mono):
                     job = min(ready_list_HI, key=lambda x: x.absolute_deadline)
             else:
                 # job with the highest priority
-                print([job.absolute_deadline for job in self.ready_list])
+                # print([job.absolute_deadline for job in self.ready_list])
                 job = min(self.ready_list, key=lambda x: x.absolute_deadline)
         if job:
             self.sim.logger.log(str(self.sim.mode) + " Select " + job.name, kernel=True)

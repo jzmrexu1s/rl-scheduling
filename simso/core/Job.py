@@ -100,6 +100,7 @@ class Job(Process):
             self.timer_overrun.start()
         self._sim.logger.log("{} Executing on {}".format(
             self.name, self._task.cpu.name), kernel=True)
+        self._sim.speed_logger.log("execute", self, self._sim.scheduler.processors[0].speed, kernel=True)
 
     def _on_stop_exec(self):
         if self.sim.mc:
@@ -107,6 +108,7 @@ class Job(Process):
         if self._last_exec is not None:
             self._computation_time += self.sim.now() - self._last_exec
         self._last_exec = None
+        self._sim.speed_logger.log("stop", self, self._sim.scheduler.processors[0].speed, kernel=True)
 
     def _on_preempted(self):
         self._on_stop_exec()
