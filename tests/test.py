@@ -16,7 +16,7 @@ def main(argv):
         # Manual configuration:
         configuration = Configuration()
 
-        configuration.duration = 20 * configuration.cycles_per_ms
+        configuration.duration = 44 * configuration.cycles_per_ms
 
         # configuration.mc = False
 
@@ -37,8 +37,6 @@ def main(argv):
         configuration.add_task(name="T3", identifier=3, period=16,
                                activation_date=0, wcet=2, deadline=16, wcet_high=2, acet=2, criticality="LO", deadline_offset=0, abort_on_miss=True)
         
-        # T1 WCET_LO: 1, WCET_HI: 4, ACET: 4, deadline_LO: 3, deadline_HI: 5
-        # T2 WCET_LO: 4, WCET_HI: 7, ACET: 4, deadline_LO: 10, deadline_HI: 10
         # Add a processor:
         configuration.add_processor(name="CPU 1", identifier=1)
 
@@ -62,11 +60,11 @@ def main(argv):
     for log in model.logs:
         print(log)
 
-    # app = QtWidgets.QApplication(sys.argv)
-    # gantt = create_gantt_window(model)
-    # ex = GanttConfigure(model, 0, 10000)
-    # if ex.exec_():
-    #     print(ex)
+    for log in model.speed_logger.range_logs:
+        print(log[0], log[2])
+    
+    print(model.speed_logger.default_multi_range_power(0, model.now()))
+
 
     parser = optparse.OptionParser()
     parser.add_option('-t', '--text', help='run script instead of a GUI',
