@@ -35,6 +35,16 @@ class SchedulerInfo(object):
         self.overhead_terminate = overhead_terminate
         self.data = {}
         self.fields_types = {}
+        self.rl_train = False
+        self.rl_test = False
+        self.sac_trainer = None
+        self.env = None
+        self.frame_idx = 0
+        self.explore_steps = 0
+        self.state = None
+        self.episode_reward = 0
+        self.replay_buffer = None
+        self.action_dim = 0
 
         if fields:
             for key, value in fields.items():
@@ -146,6 +156,16 @@ class Scheduler(object):
         self.overhead_terminate = scheduler_info.overhead_terminate
         self.data = scheduler_info.data
         self.monitor = Monitor(name="MonitorScheduler", sim=sim)
+        self.rl_train = scheduler_info.rl_train
+        self.rl_test = scheduler_info.rl_test
+        self.sac_trainer = scheduler_info.sac_trainer
+        self.env = scheduler_info.env
+        self.frame_idx = scheduler_info.frame_idx
+        self.explore_steps = scheduler_info.explore_steps
+        self.state = scheduler_info.state
+        self.episode_reward = scheduler_info.episode_reward
+        self.replay_buffer = scheduler_info.replay_buffer
+        self.action_dim = scheduler_info.action_dim
 
     def init(self):
         """
