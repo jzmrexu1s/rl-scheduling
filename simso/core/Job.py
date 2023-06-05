@@ -96,7 +96,7 @@ class Job(Process):
         if self.sim.mc:
             # print("set timer: wcet:", self.wcet, "computation time:", self.computation_time, "cpu speed:", self.cpu.speed, "timer: ", (self.wcet / self.cpu.speed) - self.computation_time)
             self.timer_overrun = Timer(self.sim, self._on_overrun,
-                               (), (self.wcet / self.cpu.speed) - self.computation_time)
+                               (), self.ret / self.cpu.speed)
             self.timer_overrun.start()
         self._sim.logger.log("{} Executing on {}".format(
             self.name, self._task.cpu.name), kernel=True)
