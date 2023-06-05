@@ -20,7 +20,40 @@ class EDF_VD_mono_CC(EDF_VD_mono):
         self.static_f_LO_LO, self.static_f_HI_LO, self.static_f_HI_HI, self.x = static_optimal(self.sim.task_list, 1, 0.2, 1, 2.5)
         for task in self.sim.task_list:
             task.deadline_offset = task.deadline * self.x - task.deadline
-        # self.init_sac()
+
+    def defer(self):
+        U = 0
+        if self.sim.mode == Criticality.LO:
+            for job in self.ready_list:
+                if job.task.criticality == Criticality.LO:
+                    U += job.task.wcet / job.task.period
+                else:
+                    U += job.task.wcet / (job.task.period + job.task.deadline_offset)
+        else:
+            for job in self.ready_list:
+                if job.task.criticality == Criticality.HI:
+                    U += job.task.wcet_high / job.task.period
+        ranked_jobs = sorted(self.ready_list, key=lambda x: x.absolute_deadline, reverse=True)
+        nearest_deadline = ranked_jobs[-1].absolute_deadline
+        p = 0
+        for job in ranked_jobs:
+            RC_i = job.ret
+            if self.sim.mode == Criticality.LO:
+                if job.task.criticality == Criticality.LO:
+                    U -= job.task.wcet / job.task.period
+                else:
+                    U -= job.task.wcet / (job.task.period + job.task.deadline_offset)
+            else:
+                if job.task.criticality == Criticality.HI:
+                    U -= job.task.wcet_high / job.task.period
+            q_i = max(0, RC_i - (1 - U) * (job.absolute_deadline - nearest_deadline))
+            if RC_i - q_i > 0:
+                U = min(1.0, U + (RC_i - q_i) / (job.absolute_deadline - nearest_deadline))
+            p = p + q_i
+        # print(p, nearest_deadline - self.sim.now_ms())
+        self.processors[0].set_speed(p / (nearest_deadline - self.sim.now_ms()))
+        
+
 
     def set_speed_static(self, job):
         # print("f_LO_LO", self.static_f_LO_LO, "f_HI_LO", self.static_f_HI_LO, "f_HI_HI", self.static_f_HI_HI, "x", self.x)
@@ -30,10 +63,12 @@ class EDF_VD_mono_CC(EDF_VD_mono):
             self.processors[0].set_speed(self.static_f_HI_LO)
         else:
             self.processors[0].set_speed(self.static_f_LO_LO)
-        self.set_speed()
 
     def set_speed(self):
-        action = self.sac_trainer.policy_net.get_action(self.state, deterministic = DETERMINISTIC)
+        if self.frame_idx > self.explore_steps:
+            action = self.sac_trainer.policy_net.get_action(self.state, deterministic = DETERMINISTIC)
+        else:
+            action = self.sac_trainer.policy_net.sample_action()
         next_state, reward, done, _ = self.env.step(action)
         self.replay_buffer.push(self.state, action, reward, next_state, done)
         self.state = next_state
@@ -45,7 +80,6 @@ class EDF_VD_mono_CC(EDF_VD_mono):
 
 
     def on_activate(self, job):
-        
         self.ready_list.append(job)
         job.cpu.resched()
 
@@ -63,7 +97,7 @@ class EDF_VD_mono_CC(EDF_VD_mono):
                 job = min(self.ready_list, key=lambda x: x.absolute_deadline)
         if job:
             self.sim.logger.log(str(self.sim.mode) + " Select " + job.name, kernel=True)
-            self.set_speed_static(job)
+            self.defer()
             # print("cpu speed:", self.processors[0].speed)
         if not job:
             # self.sim.logger.log(str(self.sim.mode) + " Select None", kernel=True)

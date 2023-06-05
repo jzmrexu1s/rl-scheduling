@@ -14,7 +14,7 @@ import rl.sac_classes as sac
 import gym
 import numpy as np
 
-rl_train = True
+rl_train = False
 rl_test = False
 
 max_episodes = 1000
@@ -69,7 +69,7 @@ def main(argv):
         # Manual configuration:
         configuration = Configuration()
 
-        configuration.duration = 44 * configuration.cycles_per_ms
+        configuration.duration = 48 * configuration.cycles_per_ms
 
         # configuration.mc = False
 
@@ -118,10 +118,8 @@ def main(argv):
             else:
                 state =  env.reset()
 
-            episode_reward = 0
-
             configuration.scheduler_info.state = state
-            configuration.scheduler_info.episode_reward = episode_reward
+            configuration.scheduler_info.episode_reward = 0
 
             model = Model(configuration)
             model.run_model()
