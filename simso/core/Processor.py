@@ -13,6 +13,7 @@ TIMER = 4
 PREEMPT = 5
 SPEED = 6
 OVERRUN = 7
+PRE_OVERRUN = 8
 
 
 class ProcInfo(object):
@@ -89,6 +90,9 @@ class Processor(Process):
 
     def overrun(self, job):
         self._evts.append((OVERRUN, job))
+
+    def pre_overrun(self, job):
+        self._evts.append((PRE_OVERRUN, job))
 
     def preempt(self, job=None):
         self._evts = deque([e for e in self._evts if e[0] != PREEMPT])
@@ -200,6 +204,8 @@ class Processor(Process):
                 self._speed = evt[1]
             elif evt[0] == OVERRUN:
                 self.sched.on_overrun(evt[1])
+            elif evt[0] == PRE_OVERRUN:
+                self.sched.on_pre_overrun(evt[1])
             elif evt[0] == RESCHED:
                 self.monitor.observe(ProcOverheadEvent("Scheduling"))
                 self.sched.monitor_begin_schedule(self)

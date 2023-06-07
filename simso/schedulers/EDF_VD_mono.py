@@ -23,6 +23,9 @@ class EDF_VD_mono(Scheduler):
         self.sim.logger.log("Resched when overrun", kernel=True)
         job.cpu.resched()
 
+    def on_pre_overrun(self, job):
+        self.sim.logger.log("No pre overrun!", kernel=True)
+
     def schedule(self, cpu):
         job = None
         if self.ready_list:

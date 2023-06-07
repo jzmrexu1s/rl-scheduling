@@ -1,6 +1,5 @@
 from simso.core import Scheduler
 from simso.schedulers import scheduler
-from simso.core.Criticality import Criticality
 from .EDF_VD_mono import EDF_VD_mono
 from .ConfStaticEDFVD import static_optimal
 from simso.core.Criticality import Criticality
@@ -21,7 +20,15 @@ class EDF_VD_mono_CC(EDF_VD_mono):
         for task in self.sim.task_list:
             task.deadline_offset = task.deadline * self.x - task.deadline
 
-    def defer(self):
+    def on_pre_overrun(self, job):
+        _, _, slack = self.slack()
+        # Full speed when using slack on pre overrun. 
+        self.processors[0].set_speed(1)
+        job.set_pre_overrun_timer(slack)
+        # no pre overrun
+        # job.set_pre_overrun_timer(0)
+
+    def slack(self):
         U = 0
         if self.sim.mode == Criticality.LO:
             for job in self.ready_list:
@@ -50,10 +57,12 @@ class EDF_VD_mono_CC(EDF_VD_mono):
             if RC_i - q_i > 0:
                 U = min(1.0, U + (RC_i - q_i) / (job.absolute_deadline - nearest_deadline))
             p = p + q_i
-        # print(p, nearest_deadline - self.sim.now_ms())
+        return p, nearest_deadline, (nearest_deadline - self.sim.now_ms()) - p
         self.processors[0].set_speed(p / (nearest_deadline - self.sim.now_ms()))
         
-
+    def set_speed_full(self):
+        min_cycles, nearest_deadline, slack = self.slack()
+        self.processors[0].set_speed(min_cycles / (nearest_deadline - self.sim.now_ms()))
 
     def set_speed_static(self, job):
         # print("f_LO_LO", self.static_f_LO_LO, "f_HI_LO", self.static_f_HI_LO, "f_HI_HI", self.static_f_HI_HI, "x", self.x)
@@ -97,7 +106,7 @@ class EDF_VD_mono_CC(EDF_VD_mono):
                 job = min(self.ready_list, key=lambda x: x.absolute_deadline)
         if job:
             self.sim.logger.log(str(self.sim.mode) + " Select " + job.name, kernel=True)
-            self.defer()
+            self.set_speed_full()
             # print("cpu speed:", self.processors[0].speed)
         if not job:
             # self.sim.logger.log(str(self.sim.mode) + " Select None", kernel=True)

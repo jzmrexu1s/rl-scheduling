@@ -69,6 +69,7 @@ def main(argv):
         # Manual configuration:
         configuration = Configuration()
 
+        # ms
         configuration.duration = 48 * configuration.cycles_per_ms
 
         # configuration.mc = False
