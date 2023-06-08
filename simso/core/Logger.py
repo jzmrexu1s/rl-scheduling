@@ -25,6 +25,7 @@ class Logger(object):
             the core of the simulation or from the scheduler.
         """
         self._logs.observe((msg, kernel))
+        print(self._logs[-1])
 
     @property
     def logs(self):

@@ -1,3 +1,4 @@
+import numpy as np
 from simso.core import Scheduler
 from simso.schedulers import scheduler
 from .EDF_VD_mono import EDF_VD_mono
@@ -6,11 +7,13 @@ from simso.core.Criticality import Criticality
 import rl.sac_classes as sac
 import torch
 import gym
+from simso.core.Env import Env
+
 
 DETERMINISTIC = False
 batch_size  = 300
 update_itr = 1
-AUTO_ENTROPY=True
+AUTO_ENTROPY = True
 @scheduler("simso.schedulers.EDF_VD_mono_CC")
 class EDF_VD_mono_CC(EDF_VD_mono):
 
@@ -19,12 +22,16 @@ class EDF_VD_mono_CC(EDF_VD_mono):
         self.static_f_LO_LO, self.static_f_HI_LO, self.static_f_HI_HI, self.x = static_optimal(self.sim.task_list, 1, 0.2, 1, 2.5)
         for task in self.sim.task_list:
             task.deadline_offset = task.deadline * self.x - task.deadline
+        self.prev_state = None
+        self.action = None
+        self.prev_cycle = 0
+        
 
     def on_pre_overrun(self, job):
         _, _, slack = self.slack()
         # Full speed when using slack on pre overrun. 
         self.processors[0].set_speed(1)
-        job.set_pre_overrun_timer(slack)
+        job.set_pre_overrun_timer(max(0, slack))
         # no pre overrun
         # job.set_pre_overrun_timer(0)
 
@@ -58,7 +65,6 @@ class EDF_VD_mono_CC(EDF_VD_mono):
                 U = min(1.0, U + (RC_i - q_i) / (job.absolute_deadline - nearest_deadline))
             p = p + q_i
         return p, nearest_deadline, (nearest_deadline - self.sim.now_ms()) - p
-        self.processors[0].set_speed(p / (nearest_deadline - self.sim.now_ms()))
         
     def set_speed_full(self):
         min_cycles, nearest_deadline, slack = self.slack()
@@ -72,6 +78,14 @@ class EDF_VD_mono_CC(EDF_VD_mono):
             self.processors[0].set_speed(self.static_f_HI_LO)
         else:
             self.processors[0].set_speed(self.static_f_LO_LO)
+
+    def set_speed_rl(self):
+        if self.frame_idx > self.explore_steps:
+            self.action = self.sac_trainer.policy_net.get_action(self.state, deterministic = DETERMINISTIC)
+        else:
+            self.action = self.sac_trainer.policy_net.sample_action()
+        print(self.action + 0.5)
+        self.processors[0].set_speed(self.action + 0.5)
 
     def set_speed(self):
         if self.frame_idx > self.explore_steps:
@@ -92,7 +106,32 @@ class EDF_VD_mono_CC(EDF_VD_mono):
         self.ready_list.append(job)
         job.cpu.resched()
 
+    def reward(self):
+        print(self.prev_cycle, self.sim.now())
+        energy_consumption = self.sim.speed_logger.default_multi_range_power(self.prev_cycle, self.sim.now())
+        full_energy_consumption = self.sim.speed_logger.default_single_range_power(self.sim.now() - self.prev_cycle)
+        return (full_energy_consumption - energy_consumption) / full_energy_consumption
+    
+    def state(self):
+        self.state = np.append(np.array([job.task.wcet, job.ret]), Env.observe(self, 0))
+
     def schedule(self, cpu):
+        # after generating new state
+        repeat_state = self.sim.now() == self.prev_cycle
+
+        if self.sim.now() != 0 and not repeat_state:
+            next_state, reward, done, _ = self.state, self.reward(), 0, {}
+            self.prev_cycle = self.sim.now()
+            
+            self.replay_buffer.push(self.prev_state, self.action, reward, next_state, done)
+            self.prev_state = self.state
+            self.episode_reward += reward
+            self.frame_idx += 1
+            if len(self.replay_buffer) > batch_size:
+                for i in range(update_itr):
+                    _=self.sac_trainer.update(batch_size, reward_scale=10., auto_entropy=AUTO_ENTROPY, target_entropy=-1.*self.action_dim)
+        
+        # select one job
         job = None
         if self.ready_list:
             if self.sim.mode == Criticality.HI:
@@ -102,17 +141,24 @@ class EDF_VD_mono_CC(EDF_VD_mono):
                     job = min(ready_list_HI, key=lambda x: x.absolute_deadline)
             else:
                 # job with the highest priority
-                # print([job.absolute_deadline for job in self.ready_list])
                 job = min(self.ready_list, key=lambda x: x.absolute_deadline)
+
+        # set cpu speed by rl action
         if job:
+            # if self.prev_state != None:
+                # state: current_wcet, current_ret, a_ego, a_lead, v_ego, v_lead
+            self.state = np.append(np.array([job.task.wcet, job.ret]), Env.observe(self, self.sim.now()))
+            self.prev_state = self.state
+
             self.sim.logger.log(str(self.sim.mode) + " Select " + job.name, kernel=True)
-            self.set_speed_full()
+            # step in env afterwards
+            self.set_speed_rl()
             # print("cpu speed:", self.processors[0].speed)
         if not job:
-            # self.sim.logger.log(str(self.sim.mode) + " Select None", kernel=True)
             if self.sim.mode == Criticality.HI:
                 self.sim.handle_VD_reset()
-                # self.sim.logger.log("Set mode to LO", kernel=True)
                 return self.schedule(cpu)
+            self.state = np.append(np.array([0, 0]), Env.observe(self, self.sim.now()))
+            self.prev_state = self.state
         
         return (job, cpu)

@@ -197,7 +197,7 @@ class Processor(Process):
             elif evt[0] == TIMER:
                 self.timer_monitor.observe(None)
                 if evt[1].overhead > 0:
-                    print(self.sim.now(), "hold", evt[1].overhead)
+                    # print(self.sim.now(), "hold", evt[1].overhead)
                     yield hold, self, evt[1].overhead
                 evt[1].call_handler()
             elif evt[0] == SPEED:

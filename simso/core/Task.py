@@ -333,8 +333,9 @@ class GenericMCTask(GenericTask):
 
     def renew_timer_deadline_VD_overrun(self):
         self._timer_deadline.stop()
+        print(self.name, self.deadline, self.job.ret)
         self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
-                               (self, self.job), self.deadline - self.job.computation_time)
+                               (self, self.job), self.deadline - self.job.ret)
         self._timer_deadline.start()
 
     def renew_timer_deadline_VD_reset(self):

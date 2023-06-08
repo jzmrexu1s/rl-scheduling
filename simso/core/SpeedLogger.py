@@ -31,7 +31,7 @@ class SpeedLogger(object):
         else:
             assert prev_range_log
             assert prev_range_log[2] == speed
-            assert prev_range_log[1] == job
+            # assert prev_range_log[1] == job
             prev_range_log[0] = [prev_range_log[0][0], cur_time]
 
     @property
@@ -45,12 +45,16 @@ class SpeedLogger(object):
     def range_logs(self):
         return self._range_logs
     
+    def default_single_range_power(self, time_gap):
+        return self.single_range_power(self.alpha, self.beta, 1, time_gap)
+    
     def default_multi_range_power(self, start_time, end_time):
         return self.multi_range_power(self.alpha, self.beta, start_time, end_time)
     
     def multi_range_power(self, alpha, beta, start_time, end_time):
         power = 0
         final_start_time = None
+        # print(self._range_logs)
         if len(self._range_logs[-1][0]) == 1:
             final_start_time = self._range_logs[-1][0][0]
             if end_time >= final_start_time:

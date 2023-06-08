@@ -44,7 +44,8 @@ class SchedulerInfo(object):
         self.state = None
         self.episode_reward = 0
         self.replay_buffer = None
-        self.action_dim = 0
+        self.action_place = None
+        self.state_place = None
 
         if fields:
             for key, value in fields.items():
@@ -165,7 +166,8 @@ class Scheduler(object):
         self.state = scheduler_info.state
         self.episode_reward = scheduler_info.episode_reward
         self.replay_buffer = scheduler_info.replay_buffer
-        self.action_dim = scheduler_info.action_dim
+        self.action_place = scheduler_info.action_place
+        self.state_place = scheduler_info.state_place
 
     def init(self):
         """

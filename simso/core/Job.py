@@ -74,6 +74,7 @@ class Job(Process):
     def set_pre_overrun_timer(self, slack):
         self._sim.logger.log(self.name + " About to Overrun! Current computation time: " + str(self.computation_time * self.sim.cycles_per_ms) + " ret: " + str(self._etm.get_ret(self)) + " using slack: " + str(slack * self.sim.cycles_per_ms), kernel=True)
         # print(self.name + " About to Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(self._etm.get_ret(self)) + " using slack: " + str(slack))
+        # print(slack)
         self.timer_overrun = Timer(self.sim, self._on_overrun,
                             (), slack)
         self.timer_overrun.start()
@@ -120,7 +121,7 @@ class Job(Process):
         self._sim.speed_logger.log("execute", self, self._sim.scheduler.processors[0].speed, kernel=True)
 
     def _on_stop_exec(self):
-        if self.sim.mc:
+        if self.sim.mc and self.timer_overrun:
             self.timer_overrun.stop()
         if self._last_exec is not None:
             self._computation_time += self.sim.now() - self._last_exec

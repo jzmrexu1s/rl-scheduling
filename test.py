@@ -2,6 +2,7 @@ import sys
 
 sys.path.append("..")
 from simso.core import Model
+from simso.core.Env import Env
 from simso.core.Scheduler import SchedulerInfo
 from simso.configuration import Configuration
 from PyQt5 import QtCore, QtWidgets
@@ -13,43 +14,19 @@ from rl.reacher import Reacher
 import rl.sac_classes as sac
 import gym
 import numpy as np
+from gym.spaces.box import Box
 
-rl_train = False
+rl_train = True
 rl_test = False
 
 max_episodes = 1000
 replay_buffer_size = 1e6
 replay_buffer = sac.ReplayBuffer(replay_buffer_size)
 
-ENV = ['Reacher', 'Pendulum-v0', 'HalfCheetah-v2'][1]
-if ENV == 'Reacher':
-    NUM_JOINTS=2
-    LINK_LENGTH=[200, 140]
-    INI_JOING_ANGLES=[0.1, 0.1]
-    SCREEN_SIZE=1000
-    SPARSE_REWARD=False
-    SCREEN_SHOT=False
-    action_range = 10.0
-    env=Reacher(screen_size=SCREEN_SIZE, num_joints=NUM_JOINTS, link_lengths = LINK_LENGTH, \
-    ini_joint_angles=INI_JOING_ANGLES, target_pos = [369,430], render=True, change_goal=False)
-    action_dim = env.num_actions
-    state_dim  = env.num_observations
-else:
-    env = sac.NormalizedActions(gym.make(ENV))
-    action_dim = env.action_space.shape[0]
-    state_dim  = env.observation_space.shape[0]
-    action_range=1.
+action_range=0.5
 
 # hyper-parameters for RL training
 max_episodes  = 1000
-if ENV ==  'Reacher':
-    max_steps = 20
-elif ENV ==  'Pendulum-v0':
-    max_steps = 150  # Pendulum needs 150 steps per episode to learn well
-elif ENV == 'HalfCheetah-v2':
-    max_steps = 1000
-else:
-    raise NotImplementedError
 frame_idx   = 0
 batch_size  = 300
 explore_steps = 0  # for random action sampling in the beginning of training
@@ -59,7 +36,6 @@ DETERMINISTIC=False
 hidden_dim = 512
 rewards     = []
 rl_model_path = './model/sac_v2'
-sac_trainer=sac.SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range, state_dim=state_dim, action_dim=action_dim)
 
 def main(argv):
     if len(argv) == 2:
@@ -106,20 +82,23 @@ def main(argv):
 
     if rl_train:
         
+        action_place = Box(0.0, 1.0, [1])
+        # state: current_wcet, current_ret, a_ego, a_lead, v_ego, v_lead
+        state_place = Box(-100, 100, [6])
+        action_dim = action_place.shape[0]
+        state_dim  = state_place.shape[0]
+
+        sac_trainer=sac.SAC_Trainer(replay_buffer, hidden_dim=hidden_dim, action_range=action_range, state_dim=state_dim, action_dim=action_dim)
+        
         configuration.scheduler_info.sac_trainer = sac_trainer
-        configuration.scheduler_info.env = env
         configuration.scheduler_info.frame_idx = frame_idx
         configuration.scheduler_info.explore_steps = explore_steps
         configuration.scheduler_info.replay_buffer = replay_buffer
-        configuration.scheduler_info.action_dim = action_dim
+        configuration.scheduler_info.action_place = action_place
+        configuration.scheduler_info.state_place = state_place
 
         for eps in range(max_episodes):
-            if ENV == 'Reacher':
-                state = env.reset(SCREEN_SHOT)
-            else:
-                state =  env.reset()
-
-            configuration.scheduler_info.state = state
+            
             configuration.scheduler_info.episode_reward = 0
 
             model = Model(configuration)

@@ -16,6 +16,7 @@ class EDF_VD_mono(Scheduler):
         job.cpu.resched()
 
     def on_terminated(self, job):
+        print(job.name)
         self.ready_list.remove(job)
         job.cpu.resched()
 
