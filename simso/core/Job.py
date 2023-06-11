@@ -75,6 +75,7 @@ class Job(Process):
         self._sim.logger.log(self.name + " About to Overrun! Current computation time: " + str(self.computation_time * self.sim.cycles_per_ms) + " ret: " + str(self._etm.get_ret(self)) + " using slack: " + str(slack * self.sim.cycles_per_ms), kernel=True)
         # print(self.name + " About to Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(self._etm.get_ret(self)) + " using slack: " + str(slack))
         # print(slack)
+        print("Overrun timer: ", self.name, self.absolute_deadline, self.ret)
         self.timer_overrun = Timer(self.sim, self._on_overrun,
                             (), slack)
         self.timer_overrun.start()
@@ -112,6 +113,7 @@ class Job(Process):
         # if self.timer_overrun: print(self.timer_overrun.delay)
         # Timer has already added, if in pre_overrun status
         if self.sim.mc and not self._is_pre_overrun:
+            print("Pre overrun timer: ", self.name, self.sim.now_ms() + self.ret / self.cpu.speed, self.ret)
             # print("set timer: wcet:", self.wcet, "computation time:", self.computation_time, "cpu speed:", self.cpu.speed, "timer: ", (self.wcet / self.cpu.speed) - self.computation_time)
             self.timer_overrun = Timer(self.sim, self._on_pre_overrun,
                                (), self.ret / self.cpu.speed)

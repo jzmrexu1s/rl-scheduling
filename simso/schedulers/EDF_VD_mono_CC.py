@@ -20,6 +20,7 @@ class EDF_VD_mono_CC(EDF_VD_mono):
     def init(self):
         self.ready_list = []
         self.static_f_LO_LO, self.static_f_HI_LO, self.static_f_HI_HI, self.x = static_optimal(self.sim.task_list, 1, 0.2, 1, 2.5)
+        print(self.x)
         for task in self.sim.task_list:
             task.deadline_offset = task.deadline * self.x - task.deadline
         self.prev_state = None
@@ -79,12 +80,15 @@ class EDF_VD_mono_CC(EDF_VD_mono):
         else:
             self.processors[0].set_speed(self.static_f_LO_LO)
 
+    def set_speed_custom(self):
+        self.processors[0].set_speed(0.2)
+
     def set_speed_rl(self):
         if self.frame_idx > self.explore_steps:
             self.action = self.sac_trainer.policy_net.get_action(self.state, deterministic = DETERMINISTIC)
         else:
             self.action = self.sac_trainer.policy_net.sample_action()
-        print(self.action + 0.5)
+        # print(self.action + 0.5)
         self.processors[0].set_speed(self.action + 0.5)
 
     def set_speed(self):
@@ -107,7 +111,7 @@ class EDF_VD_mono_CC(EDF_VD_mono):
         job.cpu.resched()
 
     def reward(self):
-        print(self.prev_cycle, self.sim.now())
+        # print(self.prev_cycle, self.sim.now())
         energy_consumption = self.sim.speed_logger.default_multi_range_power(self.prev_cycle, self.sim.now())
         full_energy_consumption = self.sim.speed_logger.default_single_range_power(self.sim.now() - self.prev_cycle)
         return (full_energy_consumption - energy_consumption) / full_energy_consumption
@@ -152,7 +156,7 @@ class EDF_VD_mono_CC(EDF_VD_mono):
 
             self.sim.logger.log(str(self.sim.mode) + " Select " + job.name, kernel=True)
             # step in env afterwards
-            self.set_speed_rl()
+            self.set_speed_custom()
             # print("cpu speed:", self.processors[0].speed)
         if not job:
             if self.sim.mode == Criticality.HI:

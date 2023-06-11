@@ -24,7 +24,7 @@ class Logger(object):
             - `kernel`: Allows to make a distinction between a message from \
             the core of the simulation or from the scheduler.
         """
-        self._logs.observe((msg, kernel))
+        self._logs.observe(("[" + str(self.sim.mode) + "] " + msg, kernel))
         print(self._logs[-1])
 
     @property

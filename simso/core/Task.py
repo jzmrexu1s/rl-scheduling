@@ -298,7 +298,7 @@ class GenericTask(Process):
             self.sim.activate(job, job.activate_job())
         self._activations_fifo.append(job)
         self._jobs.append(job)
-
+        print("Normal deadline timer: ", job.name, job.absolute_deadline, job.ret)
         timer_deadline = Timer(self.sim, GenericTask._job_killer,
                                (self, job), self.deadline)
         timer_deadline.start()
@@ -327,24 +327,20 @@ class GenericMCTask(GenericTask):
             self.sim.activate(job, job.activate_job())
         self._activations_fifo.append(job)
         self._jobs.append(job)
+        print("Normal deadline timer: ", job.name, job.absolute_deadline, job.ret)
         self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
                             (self, job), self.deadline)
         self._timer_deadline.start()
 
     def renew_timer_deadline_VD_overrun(self):
         self._timer_deadline.stop()
-        print(self.name, self.deadline, self.job.ret)
+        print("Overrun renew deadline timer: ", self.job.name, self.job.absolute_deadline, self.job.ret)
         self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
                                (self, self.job), self.deadline - self.job.ret)
         self._timer_deadline.start()
 
     def renew_timer_deadline_VD_reset(self):
         pass
-        # self._timer_deadline.stop()
-        # print("" + str(self.deadline) + " " + str(self.job.computation_time))
-        # self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
-        #                        (self, self.job), self.deadline - self.job.computation_time)
-        # self._timer_deadline.start()
 
     @property
     def wcet(self):
