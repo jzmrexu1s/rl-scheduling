@@ -123,6 +123,10 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
                 # job with the highest priority
                 job = min(self.ready_list, key=lambda x: x.absolute_deadline)
         return job
+    
+    def get_state(self, job, slack):
+        # return np.append(np.array([job.task.wcet, job.ret, slack]), Env.observe(self, self.sim.now()))
+        return np.array([job.ret, slack])
 
     def schedule(self, cpu):
         self.step += 1
@@ -134,11 +138,16 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         if self.sim.now() == 0:
             job = self.select_job()
             _, _, slack = self.slack()
-            state = np.append(np.array([job.task.wcet, job.ret, slack]), Env.observe(self, self.sim.now()))
+            state = self.get_state(job, slack)
             action = self.get_action(state)
             self.set_speed_rl(action)
             self.prev_state = state
             self.prev_action = action
+            return (job, cpu)
+        
+        # repeat state
+        if self.sim.now() == self.prev_cycle:
+            job = self.select_job()
             return (job, cpu)
 
 
@@ -146,9 +155,9 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         if job:
             self.sim.logger.log(" Select " + job.name, kernel=True)
             _, _, slack = self.slack()
-            cur_state = np.append(np.array([job.task.wcet, job.ret, slack]), Env.observe(self, self.sim.now()))
+            cur_state = self.get_state(job, slack)
             reward, done, _ = self.get_reward(), 0, {}
-            print(self.prev_state, self.prev_action, reward, cur_state, self.sim.now())
+            # print(list(self.prev_state), self.prev_action, reward, list(cur_state), self.sim.now())
             self.replay_buffer.push(self.prev_state, self.prev_action, reward, cur_state, done)
             self.episode_reward += reward
             self.frame_idx += 1
@@ -160,6 +169,7 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
             self.set_speed_rl(action)
             self.prev_state = cur_state
             self.prev_action = action
+            self.prev_cycle = self.sim.now()
 
         else:
             if self.sim.mode == Criticality.HI:

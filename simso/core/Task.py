@@ -279,7 +279,8 @@ class GenericTask(Process):
             self.sim.activate(self.job, self.job.activate_job())
 
     def _job_killer(self, job):
-        if job.end_date is None and job.computation_time < job.wcet:
+        # print("Kill job ", job.name, job.end_date, job.wcet - job.ret, job.wcet, self._task_info.abort_on_miss)
+        if job.end_date is None and job.wcet - job.ret < job.wcet:
             if self._task_info.abort_on_miss:
                 self.cancel(job)
                 job.abort()
@@ -298,7 +299,6 @@ class GenericTask(Process):
             self.sim.activate(job, job.activate_job())
         self._activations_fifo.append(job)
         self._jobs.append(job)
-        print("Normal deadline timer: ", job.name, job.absolute_deadline, job.ret)
         timer_deadline = Timer(self.sim, GenericTask._job_killer,
                                (self, job), self.deadline)
         timer_deadline.start()
@@ -327,16 +327,18 @@ class GenericMCTask(GenericTask):
             self.sim.activate(job, job.activate_job())
         self._activations_fifo.append(job)
         self._jobs.append(job)
-        print("Normal deadline timer: ", job.name, job.absolute_deadline, job.ret)
+        # print("Normal deadline timer: ", job.name, job.absolute_deadline, job.ret)
+        self._sim.logger.log("Deadline timer: " + self.name + " " + str(self.sim.now_ms() + self.deadline) + " cpu speed: " + str(self.cpu.speed))
         self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
                             (self, job), self.deadline)
         self._timer_deadline.start()
 
     def renew_timer_deadline_VD_overrun(self):
         self._timer_deadline.stop()
-        print("Overrun renew deadline timer: ", self.job.name, self.job.absolute_deadline, self.job.ret)
+        # print("Overrun renew deadline timer: ", self.job.name, self.job.absolute_deadline, self.job.ret)
+        self._sim.logger.log("Renew Deadline timer: " + self.name + " " + str(self.job.absolute_deadline - self.deadline_offset) + " cpu speed: " + str(self.cpu.speed))
         self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
-                               (self, self.job), self.deadline - self.job.ret)
+                               (self, self.job), self.job.absolute_deadline - self.deadline_offset - self.sim.now_ms())
         self._timer_deadline.start()
 
     def renew_timer_deadline_VD_reset(self):

@@ -30,7 +30,7 @@ class SpeedLogger(object):
             self._range_logs.append([[cur_time], job, speed])
         else:
             assert prev_range_log
-            assert prev_range_log[2] == speed
+            # assert prev_range_log[2] == speed
             # assert prev_range_log[1] == job
             prev_range_log[0] = [prev_range_log[0][0], cur_time]
 

@@ -124,7 +124,7 @@ class Configuration(object):
         self.check_caches()
 
     def check_general(self):
-        assert self.duration >= 0, \
+        assert self.duration >= 0 or self.duration == -1, \
             "Simulation duration must be a positive number."
         assert self.cycles_per_ms >= 0, \
             "Cycles / ms must be a positive number."

@@ -19,17 +19,16 @@ from gym.spaces.box import Box
 rl_train = True
 rl_test = False
 
-max_episodes = 1000
+max_episodes = 100
 replay_buffer_size = 1e6
 replay_buffer = sac.ReplayBuffer(replay_buffer_size)
 
 action_range=0.5
 
 # hyper-parameters for RL training
-max_episodes  = 1000
 frame_idx   = 0
 batch_size  = 300
-explore_steps = 0  # for random action sampling in the beginning of training
+explore_steps = 50  # for random action sampling in the beginning of training
 update_itr = 1
 AUTO_ENTROPY=True
 DETERMINISTIC=False
@@ -46,7 +45,8 @@ def main(argv):
         configuration = Configuration()
 
         # ms
-        configuration.duration = 48 * configuration.cycles_per_ms
+        configuration.duration = 888888888 * configuration.cycles_per_ms
+        # configuration.duration = -1
 
         # configuration.mc = False
 
@@ -62,7 +62,7 @@ def main(argv):
 
         # Add tasks:
         configuration.add_task(name="T1", identifier=1, period=8,
-                               activation_date=0, wcet=2, deadline=8, wcet_high=5, acet=2, criticality="HI", deadline_offset=0, abort_on_miss=True)
+                               activation_date=0, wcet=3, deadline=8, wcet_high=6, acet=6, criticality="HI", deadline_offset=0, abort_on_miss=True)
         configuration.add_task(name="T2", identifier=2, period=12,
                                activation_date=0, wcet=1, deadline=12, wcet_high=1, acet=1, criticality="LO", deadline_offset=0, abort_on_miss=True)
         configuration.add_task(name="T3", identifier=3, period=16,
@@ -72,9 +72,7 @@ def main(argv):
         configuration.add_processor(name="CPU 1", identifier=1)
 
         # Add a scheduler:
-        #configuration.scheduler_info.filename = "examples/RM.py"
-        # configuration.scheduler_info.clas = "simso.schedulers.CC_EDF"
-        configuration.scheduler_info.clas = "simso.schedulers.EDF_VD_mono_CC"
+        configuration.scheduler_info.clas = "simso.schedulers.EDF_VD_mono_LA_RL"
 
         
 
@@ -83,8 +81,9 @@ def main(argv):
     if rl_train:
         
         action_place = Box(0.0, 1.0, [1])
-        # state: current_wcet, current_ret, a_ego, a_lead, v_ego, v_lead
-        state_place = Box(-100, 100, [6])
+        # state: current_wcet, current_ret, U, a_ego, a_lead, v_ego, v_lead
+        # TODO: set state
+        state_place = Box(-100, 100, [2])
         action_dim = action_place.shape[0]
         state_dim  = state_place.shape[0]
 
@@ -113,6 +112,9 @@ def main(argv):
 
         sac_trainer.save_model(rl_model_path)
 
+        for log in model.speed_logger.range_logs:
+            print(log[0], log[2])
+
     if rl_test:
         pass
 
@@ -127,7 +129,14 @@ def main(argv):
         for log in model.speed_logger.range_logs:
             print(log[0], log[2])
         
-        print(model.speed_logger.default_multi_range_power(0, model.now()))
+        print("Power: ", model.speed_logger.default_multi_range_power(0, model.now()))
+        jobs_count = 0
+        aborted_jobs_count = 0
+        for key in model.results.tasks.keys():
+            jobs_count += len(model.results.tasks[key].jobs)
+            aborted_jobs_count += model.results.tasks[key].abort_count
+        print("All jobs:", jobs_count, ", aborted:", aborted_jobs_count)
+        
 
 
         parser = optparse.OptionParser()

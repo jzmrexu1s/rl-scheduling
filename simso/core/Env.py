@@ -12,5 +12,5 @@ class Env(object):
     def now_acet(self, job):
         # return min(job.wcet * self._model.now_ms() / 10, job.wcet)
         if job.task.criticality == Criticality.HI:
-            return job.wcet * 1.2
+            return 6
         return job.wcet

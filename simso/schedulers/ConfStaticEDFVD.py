@@ -16,6 +16,8 @@ def get_X_LB(U_HI_LO, U_LO_LO):
     return U_HI_LO / (1 - U_LO_LO)
 
 def get_X_UB(U_HI_HI, U_LO_LO):
+    if U_LO_LO == 0:
+        return 1
     return min(1, (1 - U_HI_HI) / U_LO_LO)
 
 def get_X_LB_under_freq(taskset, f_base, f_LO_LO, f_HI_LO):

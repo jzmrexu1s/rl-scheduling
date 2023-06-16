@@ -17,7 +17,9 @@ class EDF_VD_mono(Scheduler):
 
     def on_terminated(self, job):
         self.sim.logger.log("Terminating " + job.name, kernel=True)
-        self.ready_list.remove(job)
+        # TODO: Bad handling
+        if job in self.ready_list:
+            self.ready_list.remove(job)
         job.cpu.resched()
 
     def on_overrun(self, job):
