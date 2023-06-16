@@ -15,7 +15,7 @@ DETERMINISTIC = False
 batch_size  = 300
 update_itr = 1
 AUTO_ENTROPY = True
-step = 500
+step = 50000
 @scheduler("simso.schedulers.EDF_VD_mono_LA_RL")
 class EDF_VD_mono_LA_RL(EDF_VD_mono):
 
@@ -93,9 +93,10 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         return action
 
     def set_speed_rl(self, action):
-        self.sim.logger.log("Set speed " + str(math.ceil(100 * (action + 0.5)) / 100), kernel=True)
+        speed = math.ceil(100 * (action)) / 100
+        self.sim.logger.log("Set speed " + str(math.ceil(100 * (action)) / 100), kernel=True)
         # TODO: 输出范围为-0.5~0.5，设置速度时直接加0.5
-        self.processors[0].set_speed(math.ceil(100 * (action + 0.5)) / 100)
+        self.processors[0].set_speed(speed)
 
     def on_activate(self, job):
         self.ready_list.append(job)

@@ -190,14 +190,15 @@ class PolicyNetwork(nn.Module):
         
         normal = Normal(0, 1)
         z      = normal.sample(mean.shape).to(device)
-        action = self.action_range* torch.tanh(mean + std*z)
+        action = self.action_range* torch.sigmoid(mean + std*z)
+
         
-        action = self.action_range* torch.tanh(mean).detach().cpu().numpy()[0] if deterministic else action.detach().cpu().numpy()[0]
+        action = self.action_range* torch.sigmoid(mean).detach().cpu().numpy()[0] if deterministic else action.detach().cpu().numpy()[0]
         return action
 
 
     def sample_action(self,):
-        a=torch.FloatTensor(self.num_actions).uniform_(-1, 1)
+        a=torch.FloatTensor(self.num_actions).uniform_(0, 1)
         return self.action_range*a.numpy()
 
 

@@ -23,7 +23,7 @@ max_episodes = 100
 replay_buffer_size = 1e6
 replay_buffer = sac.ReplayBuffer(replay_buffer_size)
 
-action_range=0.5
+action_range=1
 
 # hyper-parameters for RL training
 frame_idx   = 0
