@@ -20,7 +20,13 @@ setup(
     packages=find_packages(),
     install_requires=[
         'SimPy==2.3.1',
-        'numpy>=1.6'
+        'numpy>=1.6',
+        'Pyqt5==5.11.3',
+        'gym==0.10.0',
+        'pygame==2.4.0',
+        'matplotlib',
+        'torch',
+        'iPython'
     ],
     long_description="""\
 SimSo is a scheduling simulator for real-time multiprocessor architectures that
