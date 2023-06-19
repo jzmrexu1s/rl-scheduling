@@ -89,22 +89,23 @@ class Job(Process):
         self._sim.logger.log(self.name + " preoverrun, ret " + str(ret))
         self._is_pre_overrun = True
         self._task.cpu.pre_overrun(self)
+        self._etm.on_pre_overrun(self)
 
     def _on_overrun(self):
         ret = self._etm.get_ret(self)
-        if ret >= 0:
+        # if ret >= 0:
             # print(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret))
-            self._sim.logger.log(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret), kernel=True)
-            self._sim.handle_VD_overrun()
-            self._task.cpu.overrun(self)
-            self._etm.on_overrun(self)
+        self._sim.logger.log(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret), kernel=True)
+        self._sim.handle_VD_overrun()
+        self._task.cpu.overrun(self)
+        self._etm.on_overrun(self)
 
     def _on_simple_overrun(self):
         ret = self._etm.get_ret(self)
-        if ret >= 0:
+        # if ret >= 0:
             # print(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret))
-            self._sim.logger.log(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret), kernel=True)
-            self.abort()
+        self._sim.logger.log(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret), kernel=True)
+        self.abort()
         
     def _on_activate(self):
         self._monitor.observe(JobEvent(self, JobEvent.ACTIVATE))
@@ -252,7 +253,12 @@ class Job(Process):
         """
         Remaining execution time in ms.
         """
+        if self._is_pre_overrun: return self.task.wcet_high - self.actual_computation_time
         return self.wcet - self.actual_computation_time
+
+    @property
+    def ret_cycle(self):
+        return self._etm.get_ret(self)
 
     @property
     def laxity(self):

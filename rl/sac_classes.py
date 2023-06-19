@@ -35,7 +35,7 @@ class ReplayBuffer:
     def push(self, state, action, reward, next_state, done):
         if len(self.buffer) < self.capacity:
             self.buffer.append(None)
-        if type(reward) == float:
+        if type(reward) == float or type(reward) == int:
             reward = np.array([reward])
         self.buffer[self.position] = (state, action, reward, next_state, done)
         self.position = int((self.position + 1) % self.capacity)  # as a ring buffer
@@ -43,7 +43,7 @@ class ReplayBuffer:
     def sample(self, batch_size):
         batch = random.sample(self.buffer, batch_size)
         # for item in batch:
-        #     print(item[0].shape, item[1], item[2].shape, item[3].shape, item[4])
+        #     print(item[0].shape, item[1], item[2], item[3].shape, item[4])
         state, action, reward, next_state, done = map(np.stack, zip(*batch)) # stack for each element
         ''' 
         the * serves as unpack: sum(a,b) <=> batch=(a,b), sum(*batch) ;

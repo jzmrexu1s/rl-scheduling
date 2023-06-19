@@ -16,6 +16,9 @@ class InjectACET(ACET):
 
     def on_overrun(self, job):
         return super().update_executed(self)
+
+    def on_pre_overrun(self, job):
+        return super().update_executed(self)
     
     def on_abort(self, job):
         self.abort_count += 1

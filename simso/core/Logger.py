@@ -25,7 +25,7 @@ class Logger(object):
             the core of the simulation or from the scheduler.
         """
         self._logs.observe(("[" + str(self.sim.mode) + "] " + msg, kernel))
-        # print(self._logs[-1], "Speed [", self.sim.processors[0].speed, "]")
+        # print(self._logs[-1], "Speed [", self.sim.processors[0].speed, "] ", [item.name for item in self.sim.scheduler.ready_list])
 
     @property
     def logs(self):
@@ -33,3 +33,7 @@ class Logger(object):
         The logs, a SimPy Monitor object.
         """
         return self._logs
+    
+    def show(self):
+        for item in self._logs:
+            print(item)

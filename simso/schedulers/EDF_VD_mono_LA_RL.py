@@ -15,7 +15,7 @@ DETERMINISTIC = False
 batch_size  = 300
 update_itr = 1
 AUTO_ENTROPY = True
-step = 50000
+step = 1000
 @scheduler("simso.schedulers.EDF_VD_mono_LA_RL")
 class EDF_VD_mono_LA_RL(EDF_VD_mono):
 
@@ -30,6 +30,7 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         self.prev_action = None
         self.prev_cycle = 0
         self.step = 0
+        self.prev_min_speed = 0
 
     def on_pre_overrun(self, job):
         _, _, slack = self.slack()
@@ -102,9 +103,13 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         self.ready_list.append(job)
         job.cpu.resched()
 
-    def get_reward(self):
+    def get_reward(self, action):
         abort_count = self.sim.etm.abort_count
         self.sim.etm.reset_count()
+        # print(action, self.prev_min_speed)
+        if action < self.prev_min_speed:
+            return -100
+        return -abort_count
         energy_consumption = self.sim.speed_logger.default_multi_range_power(self.prev_cycle, self.sim.now())
         full_energy_consumption = self.sim.speed_logger.default_single_range_power(self.sim.now() - self.prev_cycle)
         if self.sim.now() - self.prev_cycle < 10:
@@ -125,21 +130,33 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
                 job = min(self.ready_list, key=lambda x: x.absolute_deadline)
         return job
     
-    def get_state(self, job, slack):
+    def get_state(self, job, slack, speed):
         # return np.append(np.array([job.task.wcet, job.ret, slack]), Env.observe(self, self.sim.now()))
-        return np.array([job.ret, slack])
+        return np.array([self.sim.etm.abort_count])
+
+    def get_speed_full(self):
+        min_cycles, nearest_deadline, slack = self.slack()
+        if nearest_deadline == self.sim.now_ms():
+            return 1
+        else:
+            # print(min_cycles, nearest_deadline, self.sim.now_ms())
+            accurate_speed = min_cycles / (nearest_deadline - self.sim.now_ms())
+            return min(1, math.ceil(100 * accurate_speed) / 100)
 
     def schedule(self, cpu):
-        self.step += 1
+
         if self.step >= step:
             self.sim.stopSimulation()
             return
+
+        if self.sim.now() % 10 == 9 and self.sim.now() % 100 == 9:
+            return (None, cpu)
         
         # init state
         if self.sim.now() == 0:
             job = self.select_job()
             _, _, slack = self.slack()
-            state = self.get_state(job, slack)
+            state = self.get_state(job, slack, self.processors[0].speed)
             action = self.get_action(state)
             self.set_speed_rl(action)
             self.prev_state = state
@@ -154,10 +171,12 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
 
         job = self.select_job()
         if job:
+            # in a new state (env stepped)
+            self.step += 1
             self.sim.logger.log(" Select " + job.name, kernel=True)
             _, _, slack = self.slack()
-            cur_state = self.get_state(job, slack)
-            reward, done, _ = self.get_reward(), 0, {}
+            cur_state = self.get_state(job, slack, self.processors[0].speed)
+            reward, done, _ = self.get_reward(self.prev_action), 0, {}
             # print(list(self.prev_state), self.prev_action, reward, list(cur_state), self.sim.now())
             self.replay_buffer.push(self.prev_state, self.prev_action, reward, cur_state, done)
             self.episode_reward += reward
@@ -165,12 +184,14 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
             if len(self.replay_buffer) > batch_size:
                 for i in range(update_itr):
                     _=self.sac_trainer.update(batch_size, reward_scale=10., auto_entropy=AUTO_ENTROPY, target_entropy=-1.*self.action_place.shape[0])
-            
+            # finish step env, get action
             action = self.get_action(cur_state)
+            # set speed
             self.set_speed_rl(action)
             self.prev_state = cur_state
             self.prev_action = action
             self.prev_cycle = self.sim.now()
+            self.prev_min_speed = self.get_speed_full()
 
         else:
             if self.sim.mode == Criticality.HI:

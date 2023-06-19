@@ -52,8 +52,12 @@ class ACET(AbstractExecutionTimeModel):
         return self.executed[job] + c
 
     def get_ret(self, job):
-        return int(self.et[job] - self.get_executed(job))
-
+        # TODO: Bad handling
+        if job in self.et.keys():
+            return int(self.et[job] - self.get_executed(job))
+        self.sim.logger.show()
+        assert job in self.et.keys()
+        
     def update(self):
         for job in list(self.on_execute_date.keys()):
             self.update_executed(job)

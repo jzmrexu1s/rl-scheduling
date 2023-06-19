@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from simso.core import Scheduler
 from simso.schedulers import scheduler
@@ -15,7 +17,7 @@ class EDF_VD_mono_LA_maxQoS(EDF_VD_mono):
         self.static_f_LO_LO, self.static_f_HI_LO, self.static_f_HI_HI, self.x = static_optimal(self.sim.task_list, 1, 0.2, 1, 2.5)
         for task in self.sim.task_list:
             if task.criticality == Criticality.HI:
-                task.deadline_offset = task.deadline * self.x - task.deadline
+                task.deadline_offset = math.ceil(100 * (task.deadline * self.x - task.deadline)) / 100
         self.prev_state = None
         self.action = None
         self.prev_cycle = 0
@@ -74,6 +76,9 @@ class EDF_VD_mono_LA_maxQoS(EDF_VD_mono):
         job.cpu.resched()
 
     def schedule(self, cpu):
+
+        if self.sim.now() % 10 == 9 and self.sim.now() % 100 == 9:
+            return (None, cpu)
         
         # select one job
         job = None

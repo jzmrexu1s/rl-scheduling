@@ -19,7 +19,7 @@ from gym.spaces.box import Box
 rl_train = True
 rl_test = False
 
-max_episodes = 100
+max_episodes = 1000
 replay_buffer_size = 1e6
 replay_buffer = sac.ReplayBuffer(replay_buffer_size)
 
@@ -28,7 +28,7 @@ action_range=1
 # hyper-parameters for RL training
 frame_idx   = 0
 batch_size  = 300
-explore_steps = 50  # for random action sampling in the beginning of training
+explore_steps = 200  # for random action sampling in the beginning of training
 update_itr = 1
 AUTO_ENTROPY=True
 DETERMINISTIC=False
@@ -45,7 +45,7 @@ def main(argv):
         configuration = Configuration()
 
         # ms
-        configuration.duration = 888888888 * configuration.cycles_per_ms
+        configuration.duration = 88888888 * configuration.cycles_per_ms
         # configuration.duration = -1
 
         # configuration.mc = False
@@ -83,7 +83,7 @@ def main(argv):
         action_place = Box(0.0, 1.0, [1])
         # state: current_wcet, current_ret, U, a_ego, a_lead, v_ego, v_lead
         # TODO: set state
-        state_place = Box(-100, 100, [2])
+        state_place = Box(-100, 100, [1])
         action_dim = action_place.shape[0]
         state_dim  = state_place.shape[0]
 

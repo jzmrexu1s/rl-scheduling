@@ -17,9 +17,16 @@ class EDF_VD_mono(Scheduler):
 
     def on_terminated(self, job):
         self.sim.logger.log("Terminating " + job.name, kernel=True)
+        self.ready_list.remove(job)
         # TODO: Bad handling
-        if job in self.ready_list:
-            self.ready_list.remove(job)
+        # if job in self.ready_list:
+        #     self.ready_list.remove(job)
+        # else:
+        #     print("Terminating " + job.name + " Failed! not in list" + str([item.name for item in self.ready_list]))
+        #     assert True == False
+        #     self.sim.logger.log("Terminating " + job.name + "Failed! not in list" + str([item.name for item in self.ready_list]), kernel=True)
+        #     for log in self.sim.logger.logs:
+        #         print(log)
         job.cpu.resched()
 
     def on_overrun(self, job):
@@ -30,6 +37,10 @@ class EDF_VD_mono(Scheduler):
         self.sim.logger.log("No pre overrun!", kernel=True)
 
     def schedule(self, cpu):
+
+        if self.sim.now() % 10 == 9 and self.sim.now() % 100 == 9:
+            return (None, cpu)
+
         job = None
         if self.ready_list:
             if self.sim.mode == Criticality.HI:
