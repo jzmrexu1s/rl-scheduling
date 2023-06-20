@@ -17,16 +17,17 @@ class EDF_VD_mono(Scheduler):
 
     def on_terminated(self, job):
         self.sim.logger.log("Terminating " + job.name, kernel=True)
-        self.ready_list.remove(job)
+        # self.ready_list.remove(job)
         # TODO: Bad handling
-        # if job in self.ready_list:
-        #     self.ready_list.remove(job)
-        # else:
-        #     print("Terminating " + job.name + " Failed! not in list" + str([item.name for item in self.ready_list]))
-        #     assert True == False
-        #     self.sim.logger.log("Terminating " + job.name + "Failed! not in list" + str([item.name for item in self.ready_list]), kernel=True)
-        #     for log in self.sim.logger.logs:
-        #         print(log)
+        if job in self.ready_list:
+            self.ready_list.remove(job)
+        else:
+            print("Terminating " + job.name + " Failed! not in list" + str([item.name for item in self.ready_list]))
+            
+            self.sim.logger.log("Terminating " + job.name + "Failed! not in list" + str([item.name for item in self.ready_list]), kernel=True)
+            for log in self.sim.logger.logs:
+                print(log)
+            assert True == False
         job.cpu.resched()
 
     def on_overrun(self, job):

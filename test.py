@@ -19,7 +19,7 @@ from gym.spaces.box import Box
 rl_train = True
 rl_test = False
 
-max_episodes = 1000
+max_episodes = 100
 replay_buffer_size = 1e6
 replay_buffer = sac.ReplayBuffer(replay_buffer_size)
 
@@ -45,7 +45,7 @@ def main(argv):
         configuration = Configuration()
 
         # ms
-        configuration.duration = 88888888 * configuration.cycles_per_ms
+        configuration.duration = 8888888 * configuration.cycles_per_ms
         # configuration.duration = -1
 
         # configuration.mc = False
@@ -111,10 +111,34 @@ def main(argv):
             rewards.append(model.scheduler.episode_reward)
 
         sac_trainer.save_model(rl_model_path)
+        
+        for log in model.logs:
+            print(log)
 
         for log in model.speed_logger.range_logs:
             print(log[0], log[2])
 
+        print("Power: ", model.speed_logger.default_multi_range_power(0, model.now()))
+        jobs_count = 0
+        aborted_jobs_count = 0
+        for key in model.results.tasks.keys():
+            jobs_count += len(model.results.tasks[key].jobs)
+            aborted_jobs_count += model.results.tasks[key].abort_count
+        print("All jobs:", jobs_count, ", aborted:", aborted_jobs_count)
+        
+
+
+        parser = optparse.OptionParser()
+        parser.add_option('-t', '--text', help='run script instead of a GUI',
+                        action='store', dest='script')
+        (opts, args) = parser.parse_args()
+        app = QtWidgets.QApplication(args)
+        app.setOrganizationName("SimSo")
+        app.setApplicationName("SimSo")
+        gantt = create_gantt_window(model)
+        gantt.show()
+        sys.exit(app.exec_())
+        
     if rl_test:
         pass
 

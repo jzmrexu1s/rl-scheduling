@@ -6,6 +6,7 @@ from simso.core.JobEvent import JobEvent
 from math import ceil
 from simso.core.Timer import Timer
 from simso.core.Criticality import Criticality
+from simso.utils.timerFixer import timer_fix
 
 """
 MC behavior refers to: 
@@ -53,6 +54,7 @@ class Job(Process):
         self._was_running_on = task.cpu
         self._acet = acet if acet else self.wcet
         self._is_pre_overrun = False
+        self.timer_overrun_activate_cycle = 0
 
         self._on_activate()
 
@@ -77,11 +79,11 @@ class Job(Process):
         ret = self._etm.get_ret(self)
         self._sim.logger.log(self.name + "   " + str(ret) + " " + str(self._etm.get_ret(self)))
         if ret >= 0:
+            fixed_timer_len = timer_fix(slack * self.sim.cycles_per_ms, self.sim.now() * self.sim.cycles_per_ms)
             self._sim.logger.log(self.name + " About to Overrun! Current computation time: " + str(self.computation_time * self.sim.cycles_per_ms) + " ret: " + str(self._etm.get_ret(self)) + " using slack: " + str(slack * self.sim.cycles_per_ms), kernel=True)
-            # print("Overrun timer: ", self.name, self.absolute_deadline, self.ret)
             self._sim.logger.log("Pre overrun timer: " + self.name + " " + str(self.sim.now_ms() + slack) + " " + str(ret))
             self.timer_overrun = Timer(self.sim, self._on_overrun,
-                                (), slack)
+                                (), fixed_timer_len)
             self.timer_overrun.start()
 
     def _on_pre_overrun(self):
@@ -93,18 +95,20 @@ class Job(Process):
 
     def _on_overrun(self):
         ret = self._etm.get_ret(self)
-        # if ret >= 0:
-            # print(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret))
-        self._sim.logger.log(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret), kernel=True)
+        # TODO: bad handling
+        if self.ret == 0 or self.ret < 0.00001:
+            return
+        self._sim.logger.log(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret) + " self ret: " + str(self.ret) , kernel=True)
         self._sim.handle_VD_overrun()
         self._task.cpu.overrun(self)
         self._etm.on_overrun(self)
 
     def _on_simple_overrun(self):
         ret = self._etm.get_ret(self)
-        # if ret >= 0:
-            # print(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret))
-        self._sim.logger.log(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret), kernel=True)
+        # TODO: bad handling
+        if self.ret == 0 or self.ret < 0.00001:
+            return
+        self._sim.logger.log(self.name + " Overrun! Current computation time: " + str(self.computation_time) + " ret: " + str(ret) + " self ret: " + str(self.ret), kernel=True)
         self.abort()
         
     def _on_activate(self):
@@ -123,30 +127,29 @@ class Job(Process):
         self.cpu.was_running = self
 
         self._monitor.observe(JobEvent(self, JobEvent.EXECUTE, self.cpu))
-        # if self.timer_overrun: print(self.timer_overrun.delay)
         # Timer has already added, if in pre_overrun status
+        
         if self.sim.mc and self.sim.mode == Criticality.LO and not self._is_pre_overrun and self.task.criticality == Criticality.HI:
             if self.ret >= 0:
-                left_time = self.ret / self.cpu.speed
-                self._sim.logger.log("HI task in LO mode overrun timer: " + self.name + " " + str(self.sim.now_ms() + math.ceil(100 * left_time) / 100) + " " + str(self.ret))
+                fixed_timer_len = timer_fix((self.ret / self.cpu.speed) * self.sim.cycles_per_ms, self.sim.now() * self.sim.cycles_per_ms)
+                self._sim.logger.log("HI task in LO mode overrun timer: " + self.name + " len: " + str(fixed_timer_len) + " stop: " + str(self.sim.now() + fixed_timer_len) + " ret: " + str(self.ret) + " cpu speed: " + str(self.cpu.speed))
                 self.timer_overrun = Timer(self.sim, self._on_pre_overrun,
-                                (), math.ceil(100 * left_time) / 100)
+                                (), fixed_timer_len, in_ms=False)
                 self.timer_overrun.start()
+                self.timer_overrun_activate_cycle = self.sim.now() + fixed_timer_len
         elif self.sim.mc and self.sim.mode == Criticality.LO and not self._is_pre_overrun:
             if self.ret >= 0:
-                left_time = self.ret / self.cpu.speed
-                # print(self.sim.now_ms(), math.ceil(100 * left_time) / 100)
-                self._sim.logger.log("LO task overrun timer: " + self.name + " " + str(self.sim.now_ms() + math.ceil(100 * left_time) / 100) + " " + str(self.ret) + " cpu speed: " + str(self.cpu.speed))
+                fixed_timer_len = timer_fix((self.ret / self.cpu.speed) * self.sim.cycles_per_ms, self.sim.now() * self.sim.cycles_per_ms)
+                self._sim.logger.log("LO task overrun timer: " + self.name + " len: " + str(fixed_timer_len) + " stop: " + str(self.sim.now() + fixed_timer_len) + " ret: " + str(self.ret) + " cpu speed: " + str(self.cpu.speed))
                 self.timer_overrun = Timer(self.sim, self._on_simple_overrun,
-                                (), math.ceil(100 * left_time) / 100)
+                                (), fixed_timer_len, in_ms=False)
                 self.timer_overrun.start()
         elif self.sim.mc and self.sim.mode == Criticality.HI:
             if self.ret >= 0:
-                left_time = self.ret / self.cpu.speed
-                self._sim.logger.log("HI task in HI mode overrun timer: " + self.name + " " + str(self.sim.now_ms() + math.ceil(100 * left_time) / 100) + " " + str(self.ret) + " cpu speed: " + str(self.cpu.speed))
-                
+                fixed_timer_len = timer_fix((self.ret / self.cpu.speed) * self.sim.cycles_per_ms, self.sim.now() * self.sim.cycles_per_ms)
+                self._sim.logger.log("HI task in HI mode overrun timer: " + self.name + " len: " + str(fixed_timer_len) + " stop: " + str(self.sim.now() + fixed_timer_len) + " ret: " + str(self.ret) + " cpu speed: " + str(self.cpu.speed))
                 self.timer_overrun = Timer(self.sim, self._on_simple_overrun,
-                                (), math.ceil(100 * left_time) / 100)
+                                (), fixed_timer_len, in_ms=False)
                 self.timer_overrun.start()
         self._sim.logger.log("{} Executing on {}".format(
             self.name, self._task.cpu.name), kernel=True)

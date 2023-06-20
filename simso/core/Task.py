@@ -6,6 +6,7 @@ from simso.core.Job import Job
 from simso.core.Timer import Timer
 from .CSDP import CSDP
 from simso.core.Criticality import Criticality
+from simso.utils.timerFixer import timer_fix
 
 import os
 import os.path
@@ -281,13 +282,15 @@ class GenericTask(Process):
         self._timer_deadline.stop()
 
     def _job_killer(self, job):
-        if job.end_date is None:
+        if job.timer_overrun_activate_cycle == self.sim.now():
+            return
+        if job.end_date is None and job.wcet - job.ret < job.wcet:
             if self._task_info.abort_on_miss:
                 self.cancel(job)
                 job.abort()
                 return
+        return
         # TODO: Bad handling
-        # print("Kill job ", job.name, job.end_date, "ret", job.ret, "wcet", job.wcet, self._task_info.abort_on_miss)
         assert job.wcet - job.ret <= job.wcet or abs(job.ret) <= 0.002, job.name + " " + str(job.end_date) + " ret "+ str(job.ret) + " wcet " + str(job.wcet) + " " + str(self._task_info.abort_on_miss)
         if job.end_date is None and (job.wcet - job.ret <= job.wcet or abs(job.ret) <= 0.002):
 
@@ -337,19 +340,18 @@ class GenericMCTask(GenericTask):
             self.sim.activate(job, job.activate_job())
         self._activations_fifo.append(job)
         self._jobs.append(job)
-        # print("Normal deadline timer: ", job.name, job.absolute_deadline, job.ret)
-        self._sim.logger.log("Deadline timer: " + self.name + " " + str(self.sim.now_ms() + self.deadline) + " cpu speed: " + str(self.cpu.speed) + " " + str(self.deadline * self.sim.cycles_per_ms))
+        fixed_timer_len = timer_fix(self.deadline * self.sim.cycles_per_ms, self.sim.now() * self.sim.cycles_per_ms)
+        self._sim.logger.log("Deadline timer: " + self.name + " stop: " + str(self.sim.now() + fixed_timer_len) + " timer length: " + str(fixed_timer_len) + " cpu speed: " + str(self.cpu.speed) + " " + str(self.deadline * self.sim.cycles_per_ms))
         self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
-                            (self, job), self.deadline * self.sim.cycles_per_ms, in_ms=False)
+                            (self, job), fixed_timer_len, in_ms=False)
         self._timer_deadline.start()
 
     def renew_timer_deadline_VD_overrun(self):
         self._timer_deadline.stop()
-        new_timer = math.floor(100 * (self.job.absolute_deadline - self.deadline_offset - self.sim.now_ms())) / 100
-        # print("Overrun renew deadline timer: ", self.job.name, self.job.absolute_deadline, self.job.ret)
-        self._sim.logger.log("Renew Deadline timer: " + self.name + " " + str(self.job.absolute_deadline - self.deadline_offset) + " timer length: " + str(new_timer) + " cpu speed: " + str(self.cpu.speed))
+        fixed_timer_len = timer_fix((self.job.absolute_deadline - self.deadline_offset - self.sim.now_ms()) * self.sim.cycles_per_ms, self.sim.now() * self.sim.cycles_per_ms)
+        self._sim.logger.log("Renew Deadline timer: " + self.name + " stop: " + str(self.sim.now() + fixed_timer_len) + " timer length: " + str(fixed_timer_len) + " cpu speed: " + str(self.cpu.speed))
         self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
-                               (self, self.job), new_timer)
+                               (self, self.job), fixed_timer_len, in_ms=False)
         self._timer_deadline.start()
 
     def renew_timer_deadline_VD_reset(self):

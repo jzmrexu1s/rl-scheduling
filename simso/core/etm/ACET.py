@@ -56,6 +56,7 @@ class ACET(AbstractExecutionTimeModel):
         if job in self.et.keys():
             return int(self.et[job] - self.get_executed(job))
         self.sim.logger.show()
+        print(job.name)
         assert job in self.et.keys()
         
     def update(self):

@@ -15,7 +15,7 @@ DETERMINISTIC = False
 batch_size  = 300
 update_itr = 1
 AUTO_ENTROPY = True
-step = 1000
+step = 100
 @scheduler("simso.schedulers.EDF_VD_mono_LA_RL")
 class EDF_VD_mono_LA_RL(EDF_VD_mono):
 
