@@ -41,7 +41,11 @@ class EDF_VD_mono_LA_maxQoS(EDF_VD_mono):
             for job in self.ready_list:
                 if job.task.criticality == Criticality.HI:
                     U += job.task.wcet_high / job.task.period
-        ranked_jobs = sorted(self.ready_list, key=lambda x: x.absolute_deadline, reverse=True)
+        if self.sim.mode == Criticality.LO:
+            ranked_jobs = sorted(self.ready_list, key=lambda x: x.absolute_deadline, reverse=True)
+        else:
+            ready_list_HI = [job for job in self.ready_list if job.task.criticality == Criticality.HI]
+            ranked_jobs = sorted(ready_list_HI, key=lambda x: x.absolute_deadline, reverse=True)
         # print([[job.name, job.absolute_deadline] for job in ranked_jobs])
         nearest_deadline = ranked_jobs[-1].absolute_deadline
         p = 0

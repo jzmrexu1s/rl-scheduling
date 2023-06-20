@@ -59,7 +59,11 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         U = self.U()
         if len(self.ready_list) == 0:
             return 0, 0, 0
-        ranked_jobs = sorted(self.ready_list, key=lambda x: x.absolute_deadline, reverse=True)
+        if self.sim.mode == Criticality.LO:
+            ranked_jobs = sorted(self.ready_list, key=lambda x: x.absolute_deadline, reverse=True)
+        else:
+            ready_list_HI = [job for job in self.ready_list if job.task.criticality == Criticality.HI]
+            ranked_jobs = sorted(ready_list_HI, key=lambda x: x.absolute_deadline, reverse=True)
         nearest_deadline = ranked_jobs[-1].absolute_deadline
         p = 0
         for job in ranked_jobs:
@@ -135,6 +139,8 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         return np.array([self.sim.etm.abort_count])
 
     def get_speed_full(self):
+        if self.sim.mode == Criticality.HI:
+            return 1
         min_cycles, nearest_deadline, slack = self.slack()
         if nearest_deadline == self.sim.now_ms():
             return 1

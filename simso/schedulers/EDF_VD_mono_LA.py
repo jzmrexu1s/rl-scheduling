@@ -13,6 +13,9 @@ from .EDF_VD_mono_LA_maxQoS import EDF_VD_mono_LA_maxQoS
 class EDF_VD_mono_LA(EDF_VD_mono_LA_maxQoS):
 
     def set_speed_full(self):
+        if self.sim.mode == Criticality.HI:
+            self.processors[0].set_speed(1)
+            return
         min_cycles, nearest_deadline, slack = self.slack()
         if nearest_deadline == self.sim.now_ms():
             self.processors[0].set_speed(1)
