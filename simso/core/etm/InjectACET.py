@@ -8,10 +8,11 @@ class InjectACET(ACET):
         self.executed = {}
         self.on_execute_date = {}
         self.abort_count = 0
+        self.terminate_count = 0
     
     def on_activate(self, job):
         self.executed[job] = 0
-        job.acet = job.sim.env.now_acet(job)
+        job.acet = job.sim.env.now_acet(job, self.sim.now())
         self.et[job] = job.acet * self.sim.cycles_per_ms
 
     def on_overrun(self, job):
@@ -25,5 +26,13 @@ class InjectACET(ACET):
         self.update_executed(job)
         del self.et[job]
 
-    def reset_count(self):
+    def reset_abort_count(self):
         self.abort_count = 0
+        
+    def reset_terminate_count(self):
+        self.terminate_count = 0
+        
+    def on_terminated(self, job):
+        self.terminate_count += 1
+        self.update_executed(job)
+        del self.et[job]

@@ -31,6 +31,8 @@ class EDF_VD_mono_LA_maxQoS(EDF_VD_mono):
 
     def slack(self):
         U = 0
+        if len(self.ready_list) == 0:
+            return 0, 0, 0
         if self.sim.mode == Criticality.LO:
             for job in self.ready_list:
                 if job.task.criticality == Criticality.LO:

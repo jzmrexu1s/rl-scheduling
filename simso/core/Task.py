@@ -340,18 +340,27 @@ class GenericMCTask(GenericTask):
             self.sim.activate(job, job.activate_job())
         self._activations_fifo.append(job)
         self._jobs.append(job)
+        # TODO: better timer
         fixed_timer_len = timer_fix(self.deadline * self.sim.cycles_per_ms, self.sim.now() * self.sim.cycles_per_ms)
+        if (self.sim.now() + fixed_timer_len) % 10 == 1: fixed_timer_len -= 1
+        if (self.sim.now() + fixed_timer_len) % 10 == 9: fixed_timer_len += 1
         self._sim.logger.log("Deadline timer: " + self.name + " stop: " + str(self.sim.now() + fixed_timer_len) + " timer length: " + str(fixed_timer_len) + " cpu speed: " + str(self.cpu.speed) + " " + str(self.deadline * self.sim.cycles_per_ms))
+        assert (self.sim.now() + fixed_timer_len) % 10 != 1 and (self.sim.now() + fixed_timer_len) % 10 != 9, self.sim.now() + fixed_timer_len
         self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
                             (self, job), fixed_timer_len, in_ms=False)
         self._timer_deadline.start()
 
     def renew_timer_deadline_VD_overrun(self):
         self._timer_deadline.stop()
+        # TODO: better timer
         fixed_timer_len = timer_fix((self.job.absolute_deadline - self.deadline_offset - self.sim.now_ms()) * self.sim.cycles_per_ms, self.sim.now() * self.sim.cycles_per_ms)
+        if (self.sim.now() + fixed_timer_len) % 10 == 1: fixed_timer_len -= 1
+        if (self.sim.now() + fixed_timer_len) % 10 == 9: fixed_timer_len += 1
         self._sim.logger.log("Renew Deadline timer: " + self.name + " stop: " + str(self.sim.now() + fixed_timer_len) + " timer length: " + str(fixed_timer_len) + " cpu speed: " + str(self.cpu.speed))
-        self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
-                               (self, self.job), fixed_timer_len, in_ms=False)
+        assert (self.sim.now() + fixed_timer_len) % 10 != 1 and (self.sim.now() + fixed_timer_len) % 10 != 9, self.sim.now() + fixed_timer_len
+        if fixed_timer_len > 0:
+            self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
+                                (self, self.job), fixed_timer_len, in_ms=False)
         self._timer_deadline.start()
 
     def renew_timer_deadline_VD_reset(self):

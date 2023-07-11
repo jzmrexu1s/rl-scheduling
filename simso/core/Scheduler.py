@@ -46,6 +46,8 @@ class SchedulerInfo(object):
         self.replay_buffer = None
         self.action_place = None
         self.state_place = None
+        self.supervise_step = 0
+        self.additional_info = {}
 
         if fields:
             for key, value in fields.items():
@@ -168,6 +170,8 @@ class Scheduler(object):
         self.replay_buffer = scheduler_info.replay_buffer
         self.action_place = scheduler_info.action_place
         self.state_place = scheduler_info.state_place
+        self.supervise_step = scheduler_info.supervise_step
+        self.additional_info = scheduler_info.additional_info
 
     def init(self):
         """
