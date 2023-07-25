@@ -44,6 +44,7 @@ class TaskR(object):
         self.resumptions = []
         self.task_migrations = []
         self.abort_count = 0
+        self.terminate_count = 0
         self.execute_date = None
         self.preempt_date = None
         self.cpu = None
@@ -61,6 +62,7 @@ class TaskR(object):
             self.preempt(date)
             self.waiting_jobs[0].terminate(date)
             self.waiting_jobs.pop(0)
+            self.terminate_count += 1
             if self.waiting_jobs:
                 self.waiting_jobs[0].start(date)
             self.preempt_date = None
@@ -153,6 +155,7 @@ class JobR(object):
         self.migration_delta_count = 0
         self.activation_date = date
         self.aborted = False
+        self.terminated = True
         self.computation_time = 0
         self.end_date = None
         self.response_time = None
@@ -160,6 +163,7 @@ class JobR(object):
         self.absolute_deadline = job.absolute_deadline_cycles
 
     def terminate(self, date):
+        self.terminated = True
         self.end_date = date
         self.response_time = date - self.activation_date
 

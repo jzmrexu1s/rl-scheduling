@@ -58,3 +58,6 @@ target/
 
 # Pycharm stuff
 .idea
+
+model/
+nohup.out

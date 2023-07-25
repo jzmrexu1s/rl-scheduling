@@ -25,7 +25,7 @@ class SpeedLogger(object):
             if prev_range_log:
                 prev_time = prev_range_log[0][1]
                 if prev_range_log and cur_time > prev_time:
-                    self._range_logs.append([[prev_time, cur_time], None, 0])
+                    self._range_logs.append([[prev_time, cur_time], None, 0.2])
 
             self._range_logs.append([[cur_time], job, speed])
         else:

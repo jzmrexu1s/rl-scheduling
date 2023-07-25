@@ -35,8 +35,8 @@ class EDF_VD_mono_LA(EDF_VD_mono_LA_maxQoS):
 
     def schedule(self, cpu):
 
-        if self.sim.now() % 10 == 9 and self.sim.now() % 100 == 9:
-            return (None, cpu)
+        # if self.sim.now() % 10 == 9 and self.sim.now() % 100 == 9:
+        #     return (None, cpu)
         
         # select one job
         job = None

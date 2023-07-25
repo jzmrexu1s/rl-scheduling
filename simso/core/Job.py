@@ -198,6 +198,7 @@ class Job(Process):
         self._monitor.observe(JobEvent(self, JobEvent.ABORTED))
         self._task.end_job(self)
         self._task.cpu.terminate(self)
+        # print("Job " + str(self.name) + " aborted! ret:" + str(self.ret) + " " + str(self.task.criticality))
         self._sim.logger.log("Job " + str(self.name) + " aborted! ret:" + str(self.ret))
 
     def is_running(self):

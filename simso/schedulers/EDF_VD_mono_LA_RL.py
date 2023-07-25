@@ -61,6 +61,7 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
 
     def slack(self):
         U = self.U()
+        origin_U = U
         if len(self.ready_list) == 0:
             return 0, 0, 0
         if self.sim.mode == Criticality.LO:
@@ -84,6 +85,7 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
             if RC_i - q_i > 0:
                 U = min(1.0, U + (RC_i - q_i) / (job.absolute_deadline - nearest_deadline))
             p = p + q_i
+        self.sim.logger.log("ready list " + str([x.name for x in self.ready_list]) + " U: " + str(origin_U) + " min cycles: " + str(p), kernel=True)
         return p, nearest_deadline, (nearest_deadline - self.sim.now_ms()) - p
 
     def set_speed_static(self, job):
@@ -105,9 +107,10 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         return action
 
     def set_speed_rl(self, action):
-        speed = math.ceil(100 * (action)) / 100
-        self.sim.logger.log("Set speed " + str(math.ceil(100 * (action)) / 100), kernel=True)
-        self.processors[0].set_speed(1 * action)
+        # 必须是np.float64
+        _action = action[0]
+        self.sim.logger.log("Set speed " + str(_action), kernel=True)
+        self.processors[0].set_speed(_action)
 
     def on_activate(self, job):
         self.ready_list.append(job)
@@ -147,17 +150,7 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         env_state = self.sim.env.observe_norm(self.sim.now())
         task_state = np.array([norm(self.sim.etm.abort_count, 0, 5), norm(slack, 0, self.additional_info["max_deadline"]), speed, self.U(), self.sim.mode])
         return np.hstack([task_state, env_state])
-
-    def get_speed_full(self):
-        if self.sim.mode == Criticality.HI:
-            return 1
-        min_cycles, nearest_deadline, slack = self.slack()
-        if nearest_deadline == self.sim.now_ms():
-            return 1
-        else:
-            accurate_speed = min_cycles / (nearest_deadline - self.sim.now_ms())
-            return min(1, math.ceil(100 * accurate_speed) / 100)
-        
+    
     def get_speed_required_safe(self):
         # TODO: HI状态是否速度为1
         if self.sim.mode == Criticality.HI:
@@ -167,11 +160,7 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
             return 1
         else:
             accurate_speed = min_cycles / (nearest_deadline - self.sim.now_ms())
-            return min(1, math.ceil(100 * accurate_speed) / 100)
-        
-    def get_speed_full_action_random(self):
-        full_speed = self.get_speed_full()
-        return torch.Tensor([full_speed])
+            return np.float64(min(1, math.ceil(100 * accurate_speed) / 100))
 
     def schedule(self, cpu):
 
@@ -179,8 +168,8 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
             self.sim.stopSimulation()
             return
 
-        if self.sim.now() % 10 == 9 and self.sim.now() % 100 == 9:
-            return (None, cpu)
+        # if self.sim.now() % 10 == 9 and self.sim.now() % 100 == 9:
+        #     return (None, cpu)
         
         # init state
         if self.sim.now() == 0:
@@ -188,15 +177,17 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
             _, _, slack = self.slack()
             state = self.get_state(job, slack, self.processors[0].speed)
             min_speed = self.get_speed_required_safe()
-            action = self.get_action(state)[0]
+            
+            action = math.ceil(100 * self.get_action(state)[0]) / 100
             if action < min_speed:
                 action = min_speed
             if action > 1:
                 action = 1.0
-            # action = math.ceil(100 * action) / 100
-            # action = math.ceil(100 * np.clip(self.get_action(state), min_speed, 1)[0]) / 100
             # action = min_speed
+            # print(min_speed, action)
+            action = np.array([np.float64(action)])
             self.set_speed_rl(action)
+            
             self.prev_state = state
             self.prev_action = action
             return (job, cpu)
@@ -223,20 +214,19 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
                 for i in range(update_itr):
                     _=self.sac_trainer.update(batch_size, reward_scale=10., auto_entropy=AUTO_ENTROPY, target_entropy=-1.*self.action_place.shape[0])
             # finish step env, get action
+            
+            
             min_speed = self.get_speed_required_safe()
             if self.step < self.supervise_step:
                 # action = self.get_speed_full_action_random()
                 action = 1.0
             else:
-                action = self.get_action(cur_state)[0]
+                action = math.ceil(100 * self.get_action(cur_state)[0]) / 100
                 if action < min_speed:
                     action = min_speed
                 if action > 1:
                     action = 1.0
-                # action = math.ceil(100 * action) / 100
-                # action = min_speed + 0.01
-                # print(action, min_speed, action - min_speed)
-                # action = math.ceil(100 * np.clip(self.get_action(cur_state), min_speed, 1)[0]) / 100
+            action = np.array([np.float64(action)])
                 
             # set speed
             self.set_speed_rl(action)

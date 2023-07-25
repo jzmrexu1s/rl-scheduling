@@ -21,16 +21,19 @@ start_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
 
 rl_train = False
 rl_test = True
-scheduler_class = "simso.schedulers.EDF_VD_mono_LA_RL"
+# scheduler_class = "simso.schedulers.EDF_VD_mono_LA_RL"
 # scheduler_class = "simso.schedulers.EDF_VD_mono_LA_maxQoS"
-# scheduler_class = "simso.schedulers.EDF_VD_mono_LA"
-duration_ms = 40 * 1000
+scheduler_class = "simso.schedulers.EDF_VD_mono_LA"
+duration_ms = 80 * 1000
+profile = "profile2"
+write_sim_log = True
+write_speed_log = False
 
 if scheduler_class == "simso.schedulers.EDF_VD_mono_LA" or scheduler_class == "simso.schedulers.EDF_VD_mono_LA_maxQoS":
     rl_train = False
     rl_test = False
 
-max_episodes = 1000
+max_episodes = 600
 replay_buffer_size = 1e6
 replay_buffer = sac.ReplayBuffer(replay_buffer_size)
 
@@ -45,7 +48,8 @@ AUTO_ENTROPY=True
 DETERMINISTIC=False
 hidden_dim = 128 # TODO: 修改隐藏层
 rewards     = []
-rl_model_path = './model/sac_v2'
+rl_model_path = './model/' + profile + '/sac_v2'
+log_path = './logs/simlog/'
 
 def post_train(model):
     # for log in model.logs:
@@ -54,14 +58,21 @@ def post_train(model):
     # for log in model.speed_logger.range_logs:
     #     print(log[0], log[2])
     
+    if write_sim_log:
+        with open (log_path + start_time + '.log', 'w') as f:
+            for log in model.logs:
+                f.write(str(log[0]) + " " + log[1][0] + '\n')
+    
     power = model.speed_logger.default_multi_range_power(0, model.now())
     print("Power: ", power)
     jobs_count = 0
     aborted_jobs_count = 0
+    terminated_jobs_count = 0
     for key in model.results.tasks.keys():
         jobs_count += len(model.results.tasks[key].jobs)
         aborted_jobs_count += model.results.tasks[key].abort_count
-    print("All jobs:", jobs_count, ", aborted:", aborted_jobs_count)
+        terminated_jobs_count += model.results.tasks[key].terminate_count
+    print("All jobs:", jobs_count, ", aborted:", aborted_jobs_count, ", terminated:", terminated_jobs_count)
     print("Efficiency:", (jobs_count - aborted_jobs_count) / power)
     
     parser = optparse.OptionParser()
@@ -103,7 +114,6 @@ def main(argv):
 
         # ms
         configuration.duration = duration_ms * configuration.cycles_per_ms
-        # configuration.duration = -1
 
         # configuration.mc = False
 
@@ -125,14 +135,19 @@ def main(argv):
         # configuration.add_task(name="T3", identifier=3, period=16,
         #                        activation_date=0, wcet=2, deadline=16, wcet_high=2, acet=2, criticality="LO", deadline_offset=0, abort_on_miss=True)
         
+        # ACC
         configuration.add_task(name="T1", identifier=1, period=100,
-                               activation_date=0, wcet=5, deadline=100, wcet_high=15, acet=5, criticality="HI", deadline_offset=0, abort_on_miss=True)
-        configuration.add_task(name="T2", identifier=2, period=50,
-                               activation_date=0, wcet=8, deadline=50, wcet_high=8, acet=8, criticality="LO", deadline_offset=0, abort_on_miss=True)
+                               activation_date=0, wcet=9, deadline=100, wcet_high=25, acet=10, criticality="HI", deadline_offset=0, abort_on_miss=True)
+        # LKA
+        configuration.add_task(name="T2", identifier=5, period=100,
+                               activation_date=0, wcet=5, deadline=100, wcet_high=15, acet=10, criticality="HI", deadline_offset=0, abort_on_miss=True)
+        
         configuration.add_task(name="T3", identifier=3, period=80,
                                activation_date=0, wcet=6, deadline=80, wcet_high=6, acet=6, criticality="LO", deadline_offset=0, abort_on_miss=True)
         configuration.add_task(name="T4", identifier=4, period=100,
-                               activation_date=0, wcet=15, deadline=80, wcet_high=15, acet=15, criticality="LO", deadline_offset=0, abort_on_miss=True)
+                               activation_date=0, wcet=15, deadline=100, wcet_high=15, acet=15, criticality="LO", deadline_offset=0, abort_on_miss=True)
+        configuration.add_task(name="T6", identifier=6, period=200,
+                               activation_date=0, wcet=35, deadline=200, wcet_high=35, acet=35, criticality="LO", deadline_offset=0, abort_on_miss=True)
         
         # Add a processor:
         configuration.add_processor(name="CPU 1", identifier=1)
@@ -163,16 +178,12 @@ def main(argv):
             model = Model(configuration)
             model.run_model()
             
-            # if eps % 20 == 0 and eps > 0: # plot and model saving interval
-            #     # sac.plot(rewards)
-            #     np.save('rewards', rewards)
-            #     sac_trainer.save_model(rl_model_path)
             if model.scheduler.episode_reward > max_reward:
                 max_reward = model.scheduler.episode_reward
                 sac_trainer.save_model(rl_model_path)
             
             print('Episode: ', eps, '| Episode Reward: ', model.scheduler.episode_reward)
-            writer.add_scalar("Episode Reward "+ start_time, model.scheduler.episode_reward, eps)
+            writer.add_scalar(profile + " Episode Reward " + start_time, model.scheduler.episode_reward, eps)
             rewards.append(model.scheduler.episode_reward)
             # post_train(model)
             if eps == max_episodes - 1:
