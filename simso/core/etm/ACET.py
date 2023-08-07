@@ -1,6 +1,7 @@
 from simso.core.etm.AbstractExecutionTimeModel \
     import AbstractExecutionTimeModel
 import random
+import time
 
 # TODO: the seed should be specified in order to evaluate on identical systems.
 # More precisely, the computation time of the jobs should remain the same.
@@ -55,9 +56,16 @@ class ACET(AbstractExecutionTimeModel):
         # TODO: Bad handling
         if job in self.et.keys():
             return int(self.et[job] - self.get_executed(job))
+        # return 0
         self.sim.logger.show()
         print(job.name)
         assert job in self.et.keys()
+        
+        log_path = './logs/simlog/'
+        start_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
+        with open (log_path + start_time + '.log', 'w') as f:
+            for log in self.sim.logs:
+                f.write(str(log[0]) + " " + log[1][0] + '\n')
         
     def update(self):
         for job in list(self.on_execute_date.keys()):

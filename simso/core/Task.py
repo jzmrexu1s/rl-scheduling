@@ -346,8 +346,13 @@ class GenericMCTask(GenericTask):
         if (self.sim.now() + fixed_timer_len) % 10 == 9: fixed_timer_len += 1
         self._sim.logger.log("Deadline timer: " + self.name + " stop: " + str(self.sim.now() + fixed_timer_len) + " timer length: " + str(fixed_timer_len) + " cpu speed: " + str(self.cpu.speed) + " " + str(self.deadline * self.sim.cycles_per_ms))
         assert (self.sim.now() + fixed_timer_len) % 10 != 1 and (self.sim.now() + fixed_timer_len) % 10 != 9, self.sim.now() + fixed_timer_len
-        self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
-                            (self, job), fixed_timer_len, in_ms=False)
+        
+        if self.criticality == Criticality.LO and self.sim.mode == Criticality.HI:
+            self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
+                            (self, job), 0, in_ms=False)
+        else:
+            self._timer_deadline = Timer(self.sim, GenericTask._job_killer,
+                                (self, job), fixed_timer_len, in_ms=False)
         self._timer_deadline.start()
 
     def renew_timer_deadline_VD_overrun(self):
@@ -365,6 +370,9 @@ class GenericMCTask(GenericTask):
 
     def renew_timer_deadline_VD_reset(self):
         pass
+
+    def kill_cur_job(self):
+        self._job_killer(self.job)
 
     @property
     def wcet(self):

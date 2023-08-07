@@ -198,7 +198,7 @@ class PolicyNetwork(nn.Module):
 
 
     def sample_action(self,):
-        a=torch.FloatTensor(self.num_actions).uniform_(0, 1)
+        a=torch.FloatTensor(self.num_actions).uniform_(-1, 1)
         return self.action_range*a.numpy()
 
 

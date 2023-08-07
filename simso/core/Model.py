@@ -98,9 +98,15 @@ class Model(Simulation):
     def handle_VD_overrun(self):
         self.handle_overrun()
         for task in self.task_list:
-            task.renew_timer_deadline_VD_overrun()
-            for job in task.jobs:
-                job.renew_deadline_VD_overrun()
+            if task.criticality == Criticality.HI:
+                task.renew_timer_deadline_VD_overrun()
+                for job in task.jobs:
+                    job.renew_deadline_VD_overrun()
+            else:
+                # task.renew_timer_deadline_VD_overrun()
+                # for job in task.jobs:
+                #     job.renew_deadline_VD_overrun()
+                task.kill_cur_job()
 
     def handle_reset(self):
         self.logger.log("Set mode to LO", kernel=True)

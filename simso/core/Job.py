@@ -89,9 +89,10 @@ class Job(Process):
     def _on_pre_overrun(self):
         ret = self._etm.get_ret(self)
         self._sim.logger.log(self.name + " preoverrun, ret " + str(ret))
-        self._is_pre_overrun = True
-        self._task.cpu.pre_overrun(self)
-        self._etm.on_pre_overrun(self)
+        if ret != 0:
+            self._is_pre_overrun = True
+            self._task.cpu.pre_overrun(self)
+            self._etm.on_pre_overrun(self)
 
     def _on_overrun(self):
         ret = self._etm.get_ret(self)
@@ -135,7 +136,7 @@ class Job(Process):
                 fixed_timer_len = timer_fix((self.ret / self.cpu.speed) * self.sim.cycles_per_ms, self.sim.now() * self.sim.cycles_per_ms)
                 if (self.sim.now() + fixed_timer_len) % 10 == 1: fixed_timer_len -= 1
                 if (self.sim.now() + fixed_timer_len) % 10 == 9: fixed_timer_len += 1
-                self._sim.logger.log("HI task in LO mode overrun timer: " + self.name + " len: " + str(fixed_timer_len) + " stop: " + str(self.sim.now() + fixed_timer_len) + " ret: " + str(self.ret) + " cpu speed: " + str(self.cpu.speed))
+                self._sim.logger.log("HI task in LO mode preoverrun timer: " + self.name + " len: " + str(fixed_timer_len) + " stop: " + str(self.sim.now() + fixed_timer_len) + " ret: " + str(self.ret) + " cpu speed: " + str(self.cpu.speed))
                 self.timer_overrun = Timer(self.sim, self._on_pre_overrun,
                                 (), fixed_timer_len, in_ms=False)
                 self.timer_overrun.start()

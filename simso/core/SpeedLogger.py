@@ -1,12 +1,18 @@
 from SimPy.Simulation import Monitor
 
+idle_speed = 0.2
+alpha = 3
+
+# idle_speed = 0.3
+# alpha = 2.5
+
 class SpeedLogger(object):
 
     def __init__(self, sim):
         self.sim = sim
         self._logs = Monitor(name="Logs", sim=sim)
         self._range_logs = []
-        self.alpha = 3
+        self.alpha = alpha
         self.beta = 1
 
     def log(self, status, job, speed, kernel=False):
@@ -25,7 +31,7 @@ class SpeedLogger(object):
             if prev_range_log:
                 prev_time = prev_range_log[0][1]
                 if prev_range_log and cur_time > prev_time:
-                    self._range_logs.append([[prev_time, cur_time], None, 0.2])
+                    self._range_logs.append([[prev_time, cur_time], None, idle_speed])
 
             self._range_logs.append([[cur_time], job, speed])
         else:

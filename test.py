@@ -12,28 +12,31 @@ from simsogui.SimulatorWindow import SimulatorWindow
 import optparse
 from rl.reacher import Reacher
 import rl.sac_classes as sac
-import gym
 import numpy as np
 from gym.spaces.box import Box
 from torch.utils.tensorboard import SummaryWriter
+from simso.core.Criticality import Criticality
+import cProfile
 
 start_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
 
-rl_train = False
-rl_test = True
-# scheduler_class = "simso.schedulers.EDF_VD_mono_LA_RL"
+rl_train = True
+rl_test = False
+scheduler_class = "simso.schedulers.EDF_VD_mono_LA_RL"
 # scheduler_class = "simso.schedulers.EDF_VD_mono_LA_maxQoS"
-scheduler_class = "simso.schedulers.EDF_VD_mono_LA"
+# scheduler_class = "simso.schedulers.EDF_VD_mono_LA"
 duration_ms = 80 * 1000
-profile = "profile2"
+profile = "profile4_alpha_3_minf_0.2"
 write_sim_log = True
-write_speed_log = False
+write_speed_log = True
+
+rl_state_length = 15
 
 if scheduler_class == "simso.schedulers.EDF_VD_mono_LA" or scheduler_class == "simso.schedulers.EDF_VD_mono_LA_maxQoS":
     rl_train = False
     rl_test = False
 
-max_episodes = 600
+max_episodes = 500
 replay_buffer_size = 1e6
 replay_buffer = sac.ReplayBuffer(replay_buffer_size)
 
@@ -49,7 +52,8 @@ DETERMINISTIC=False
 hidden_dim = 128 # TODO: 修改隐藏层
 rewards     = []
 rl_model_path = './model/' + profile + '/sac_v2'
-log_path = './logs/simlog/'
+sim_log_path = './logs/simlog/'
+speed_log_path = './logs/speedlog/'
 
 def post_train(model):
     # for log in model.logs:
@@ -59,9 +63,13 @@ def post_train(model):
     #     print(log[0], log[2])
     
     if write_sim_log:
-        with open (log_path + start_time + '.log', 'w') as f:
+        with open (sim_log_path + "sim-log-" + start_time + '.log', 'w') as f:
             for log in model.logs:
                 f.write(str(log[0]) + " " + log[1][0] + '\n')
+    if write_speed_log:
+        with open (speed_log_path + "speed-log-" + start_time + '.log', 'w') as f:
+            for log in model.speed_logger.range_logs:
+                f.write(str(log[0]) + " " + str(log[2]) + '\n')
     
     power = model.speed_logger.default_multi_range_power(0, model.now())
     print("Power: ", power)
@@ -90,7 +98,7 @@ def init_rl(configuration):
     action_place = Box(0.0, 1.0, [1])
     # state: current_wcet, current_ret, U, a_ego, a_lead, v_ego, v_lead
     # TODO: set state
-    state_place = Box(-100, 100, [10])
+    state_place = Box(-100, 100, [rl_state_length])
     action_dim = action_place.shape[0]
     state_dim  = state_place.shape[0]
 
@@ -126,28 +134,26 @@ def main(argv):
 
         configuration.scheduler_info.rl_train = rl_train
         configuration.scheduler_info.rl_test = rl_test
-
-        # Add tasks:
-        # configuration.add_task(name="T1", identifier=1, period=8,
-        #                        activation_date=0, wcet=3, deadline=8, wcet_high=6, acet=6, criticality="HI", deadline_offset=0, abort_on_miss=True)
-        # configuration.add_task(name="T2", identifier=2, period=12,
-        #                        activation_date=0, wcet=1, deadline=12, wcet_high=1, acet=1, criticality="LO", deadline_offset=0, abort_on_miss=True)
-        # configuration.add_task(name="T3", identifier=3, period=16,
-        #                        activation_date=0, wcet=2, deadline=16, wcet_high=2, acet=2, criticality="LO", deadline_offset=0, abort_on_miss=True)
         
         # ACC
         configuration.add_task(name="T1", identifier=1, period=100,
-                               activation_date=0, wcet=9, deadline=100, wcet_high=25, acet=10, criticality="HI", deadline_offset=0, abort_on_miss=True)
+                               activation_date=0, wcet=12, deadline=100, wcet_high=36, acet=36, criticality="HI", deadline_offset=0, abort_on_miss=True)
         # LKA
-        configuration.add_task(name="T2", identifier=5, period=100,
-                               activation_date=0, wcet=5, deadline=100, wcet_high=15, acet=10, criticality="HI", deadline_offset=0, abort_on_miss=True)
+        configuration.add_task(name="T2", identifier=2, period=100,
+                               activation_date=0, wcet=9, deadline=100, wcet_high=20, acet=20, criticality="HI", deadline_offset=0, abort_on_miss=True)
         
         configuration.add_task(name="T3", identifier=3, period=80,
                                activation_date=0, wcet=6, deadline=80, wcet_high=6, acet=6, criticality="LO", deadline_offset=0, abort_on_miss=True)
         configuration.add_task(name="T4", identifier=4, period=100,
                                activation_date=0, wcet=15, deadline=100, wcet_high=15, acet=15, criticality="LO", deadline_offset=0, abort_on_miss=True)
+        configuration.add_task(name="T5", identifier=5, period=200,
+                               activation_date=0, wcet=25, deadline=200, wcet_high=25, acet=25, criticality="LO", deadline_offset=0, abort_on_miss=True)
         configuration.add_task(name="T6", identifier=6, period=200,
-                               activation_date=0, wcet=35, deadline=200, wcet_high=35, acet=35, criticality="LO", deadline_offset=0, abort_on_miss=True)
+                                activation_date=0, wcet=40, deadline=200, wcet_high=40, acet=40, criticality="LO", deadline_offset=0, abort_on_miss=True)
+                
+        # 模拟HI任务
+        # configuration.add_task(name="T7", identifier=7, period=80,
+        #                        activation_date=0, wcet=15, deadline=80, wcet_high=20, acet=20, criticality="HI", deadline_offset=0, abort_on_miss=True)
         
         # Add a processor:
         configuration.add_processor(name="CPU 1", identifier=1)
@@ -158,7 +164,14 @@ def main(argv):
         
 
     configuration.check_all()
-
+    u = 0
+    hi_u = 0
+    for task in configuration.task_info_list:
+        u += task.wcet / task.period
+        if task.criticality == Criticality.HI:
+            hi_u += task.wcet_high / task.period
+    print("LO Utilization:", u, "HI Utilization:", hi_u)
+    
     if rl_train:
         
         writer = SummaryWriter("logs")
@@ -207,4 +220,6 @@ def main(argv):
         post_train(model)
 
 
-main(sys.argv)
+if __name__ == '__main__':
+    # cProfile.run('main(sys.argv)', filename="profile.out")
+    main(sys.argv)

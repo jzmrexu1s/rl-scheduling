@@ -121,14 +121,13 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         terminate_count = self.sim.etm.terminate_count
         self.sim.etm.reset_abort_count()
         self.sim.etm.reset_terminate_count()
-        if action < self.prev_min_speed:
-            return -100
+        # if action < self.prev_min_speed:
+        #     return -100
         energy_consumption = self.sim.speed_logger.default_multi_range_power(self.prev_cycle, self.sim.now())
         full_energy_consumption = self.sim.speed_logger.default_single_range_power(self.sim.now() - self.prev_cycle)
         # if self.sim.now() - self.prev_cycle < 10:
         #     return -5 * abort_count + (full_energy_consumption - energy_consumption) / full_energy_consumption
         # return -5 * abort_count * 1000000 / (self.sim.now() - self.prev_cycle) + (full_energy_consumption - energy_consumption) / full_energy_consumption
-        energy_efficiency = terminate_count / energy_consumption
         return -0.5 * abort_count + (full_energy_consumption - energy_consumption) / full_energy_consumption
 
     def select_job(self):
@@ -178,18 +177,18 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
             state = self.get_state(job, slack, self.processors[0].speed)
             min_speed = self.get_speed_required_safe()
             
-            action = math.ceil(100 * self.get_action(state)[0]) / 100
+            raw_action = self.get_action(state)[0]
+            action = math.ceil(100 * raw_action) / 100
+            action = action / 2 + 0.5
             if action < min_speed:
                 action = min_speed
             if action > 1:
                 action = 1.0
-            # action = min_speed
-            # print(min_speed, action)
             action = np.array([np.float64(action)])
             self.set_speed_rl(action)
             
             self.prev_state = state
-            self.prev_action = action
+            self.prev_action = np.array([np.float64(raw_action)])
             return (job, cpu)
         
         # repeat state
@@ -219,9 +218,12 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
             min_speed = self.get_speed_required_safe()
             if self.step < self.supervise_step:
                 # action = self.get_speed_full_action_random()
+                raw_action = 1.0
                 action = 1.0
             else:
-                action = math.ceil(100 * self.get_action(cur_state)[0]) / 100
+                raw_action = self.get_action(cur_state)[0]
+                action = math.ceil(100 * raw_action) / 100
+                action = action / 2 + 0.5
                 if action < min_speed:
                     action = min_speed
                 if action > 1:
@@ -231,7 +233,7 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
             # set speed
             self.set_speed_rl(action)
             self.prev_state = cur_state
-            self.prev_action = action
+            self.prev_action = np.array([np.float64(raw_action)])
             self.prev_cycle = self.sim.now()
             self.prev_min_speed = min_speed
 
