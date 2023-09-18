@@ -1,7 +1,9 @@
 from SimPy.Simulation import Monitor
 
-idle_speed = 0.2
-alpha = 3
+import config
+
+idle_speed = config.idle_speed
+alpha = config.alpha
 
 # idle_speed = 0.3
 # alpha = 2.5

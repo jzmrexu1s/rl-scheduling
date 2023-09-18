@@ -7,27 +7,32 @@ from .ConfStaticEDFVD import static_optimal
 from simso.core.Criticality import Criticality
 from simso.core.Env import Env
 from .EDF_VD_mono_LA_maxQoS import EDF_VD_mono_LA_maxQoS
+import config
+
+use_CC = config.use_CC
 
 
 @scheduler("simso.schedulers.EDF_VD_mono_LA")
 class EDF_VD_mono_LA(EDF_VD_mono_LA_maxQoS):
 
-    def set_speed_full(self):
+    def set_speed(self):
         if self.sim.mode == Criticality.HI:
             self.processors[0].set_speed(1)
             return
-        min_cycles, nearest_deadline, slack = self.slack()
-        if nearest_deadline == self.sim.now_ms():
-            self.processors[0].set_speed(1)
-            self.sim.logger.log("Set speed 1", kernel=True)
+        if use_CC:
+            _, _, slack = self.slack()
         else:
-            # print(min_cycles, nearest_deadline, self.sim.now_ms())
-            accurate_speed = min_cycles / (nearest_deadline - self.sim.now_ms())
-            self.processors[0].set_speed(min(1, math.ceil(100 * accurate_speed) / 100))
-            self.sim.logger.log("Set speed " + str(min(1, math.ceil(100 * accurate_speed) / 100)), kernel=True)
+            min_cycles, nearest_deadline, slack = self.slack()
+            if nearest_deadline == self.sim.now_ms():
+                self.processors[0].set_speed(1)
+                self.sim.logger.log("Set speed 1", kernel=True)
+            else:
+                # print(min_cycles, nearest_deadline, self.sim.now_ms())
+                accurate_speed = min_cycles / (nearest_deadline - self.sim.now_ms())
+                self.processors[0].set_speed(min(1, math.ceil(100 * accurate_speed) / 100))
+                self.sim.logger.log("Set speed " + str(min(1, math.ceil(100 * accurate_speed) / 100)), kernel=True)
 
     def on_pre_overrun(self, job):
-        _, _, slack = self.slack()
         # Full speed when using slack on pre overrun. 
         self.processors[0].set_speed(1)
         # Not using slack to prevent overrun.
@@ -54,7 +59,7 @@ class EDF_VD_mono_LA(EDF_VD_mono_LA_maxQoS):
 
             self.sim.logger.log(" Select " + job.name, kernel=True)
             # step in env afterwards
-            self.set_speed_full()
+            self.set_speed()
             # print("cpu speed:", self.processors[0].speed)
         if not job:
             if self.sim.mode == Criticality.HI:

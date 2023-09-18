@@ -264,6 +264,9 @@ class Configuration(object):
         List of tasks (TaskInfo objects).
         """
         return self._task_info_list
+    
+    def set_task_info_list(self, task_info_list):
+        self._task_info_list = task_info_list
 
     @property
     def proc_info_list(self):

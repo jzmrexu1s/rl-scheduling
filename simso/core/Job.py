@@ -345,6 +345,14 @@ class Job(Process):
         if self._sim.mode == Criticality.LO:
             return self._task.wcet
         return self._task.wcet_high
+    
+    @property
+    def wcet_high(self):
+        return self._task.wcet_high
+    
+    @property
+    def wcet_lo(self):
+        return self._task.wcet
 
     @property
     def activation_date(self):

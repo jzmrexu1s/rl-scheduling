@@ -1,18 +1,16 @@
 import math
-import random
 import numpy as np
-from simso.core import Scheduler
 from simso.schedulers import scheduler
 from .EDF_VD_mono import EDF_VD_mono
 from .ConfStaticEDFVD import static_optimal
 from simso.core.Criticality import Criticality
-import rl.sac_classes as sac
-import torch
-import gym
-from simso.core.Env import Env
-import torch.nn.functional as F
 from simso.utils.norm import norm
+import config
 
+use_physical_state = config.use_physical_state
+use_CC = config.use_CC
+idle_speed = config.idle_speed
+alpha = config.alpha
 
 DETERMINISTIC = False
 batch_size  = 300
@@ -25,7 +23,9 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
 
     def init(self):
         self.ready_list = []
-        self.static_f_LO_LO, self.static_f_HI_LO, self.static_f_HI_HI, self.x = static_optimal(self.sim.task_list, 1, 0.2, 1, 2.5)
+        self.static_f_LO_LO, self.static_f_HI_LO, self.static_f_HI_HI, self.x = static_optimal(self.sim.task_list, 1, idle_speed, 1, alpha)
+        self.U_map_LO = {}
+        self.U_map_HIGH = {}
         for task in self.sim.task_list:
             if task.criticality == Criticality.HI:
                 task.deadline_offset = task.deadline * self.x - task.deadline
@@ -35,6 +35,8 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         self.prev_cycle = 0
         self.step = 0
         self.prev_min_speed = 0
+        
+        
 
     def on_pre_overrun(self, job):
         _, _, slack = self.slack()
@@ -50,13 +52,13 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         if self.sim.mode == Criticality.LO:
             for job in self.ready_list:
                 if job.task.criticality == Criticality.LO:
-                    U += job.task.wcet / job.task.period
+                    U += (job.task.wcet / self.static_f_LO_LO) / job.task.period
                 else:
-                    U += job.task.wcet / (job.task.period + job.task.deadline_offset)
+                    U += (job.task.wcet / self.static_f_HI_LO) / (job.task.period + job.task.deadline_offset)
         else:
             for job in self.ready_list:
                 if job.task.criticality == Criticality.HI:
-                    U += job.task.wcet_high / job.task.period
+                    U += (job.task.wcet_high / self.static_f_HI_HI) / job.task.period
         return U
 
     def slack(self):
@@ -146,8 +148,10 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
     
     def get_state(self, job, slack, speed):
         # TODO: 已完成归一化
-        env_state = self.sim.env.observe_norm(self.sim.now())
         task_state = np.array([norm(self.sim.etm.abort_count, 0, 5), norm(slack, 0, self.additional_info["max_deadline"]), speed, self.U(), self.sim.mode])
+        if not use_physical_state:
+            return task_state
+        env_state = self.sim.env.observe_norm(self.sim.now())
         return np.hstack([task_state, env_state])
     
     def get_speed_required_safe(self):
@@ -229,7 +233,9 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
                 if action > 1:
                     action = 1.0
             action = np.array([np.float64(action)])
-                
+            
+            # action = np.array([np.float64(random.uniform(min_speed, 1))])
+            
             # set speed
             self.set_speed_rl(action)
             self.prev_state = cur_state

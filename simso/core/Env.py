@@ -6,9 +6,14 @@ sys.path.append("..")
 from simso.core.Criticality import Criticality
 import openpyxl
 from simso.utils.norm import norm
+import config
 
-profile = str(3)
-workbook_title = 'Run 35_ LKATestBenchExample'
+profile = config.env_profile
+workbook_title = config.env_workbook_title
+use_physical_state = config.use_physical_state
+OP = 0.001 # overrun概率/表现为高关键性概率
+BCET = 0.7 # best-case execution time，实际执行时间相比最坏执行时间比例下限
+
 
 class Env(object):
     def __init__(self, model=None):
@@ -108,15 +113,36 @@ class Env(object):
             norm(headingAngle, -0.3, 0.3), norm(lateralOffset, -0.1, 3), norm(strength, 0.35, 0.65), norm(departure_detected, 0, 1), 
             norm(lateral_deviation, -0.5, 0.5)
         ])
+        
+    def random_pick(self, some_list, probabilities): 
+        x = random.uniform(0,1) 
+        cumulative_probability = 0.0 
+        for item, item_probability in zip(some_list, probabilities): 
+            cumulative_probability += item_probability 
+            if x < cumulative_probability:
+                break 
+        return item 
     
     def now_acet(self, job, time):
-        name = job.task.name
-        # ms
-        if job.task.criticality == Criticality.HI and name in ['T1', 'T2']:
-            # 2ms一步
-            return self.read_from_file_new(self.hi_task_name_to_column[name], time) * 3
+        if use_physical_state:
+            name = job.task.name
+            # ms
+            if job.task.criticality == Criticality.HI and name in ['T1', 'T2']:
+                # 2ms一步
+                return self.read_from_file_new(self.hi_task_name_to_column[name], time) * 3
+            else:
+                return math.ceil(100 * job.wcet * random.uniform(BCET, 1)) / 100
         else:
-            return math.ceil(100 * job.wcet * random.uniform(0.7, 1)) / 100
+            if job.task.criticality == Criticality.HI:
+                is_HI = self.random_pick([False, True], [1 - OP, OP])
+                if is_HI:
+                    return math.ceil(100 * random.uniform(job.wcet_lo, job.wcet_high)) / 100
+                else:
+                    return math.ceil(100 * random.uniform(job.wcet_lo * BCET, job.wcet_lo)) / 100
+            else:
+                return math.ceil(100 * random.uniform(job.wcet_lo * BCET, job.wcet_lo)) / 100
+            
+            
     
 if __name__ == '__main__':
     env = Env()

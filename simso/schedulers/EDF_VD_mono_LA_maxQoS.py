@@ -7,14 +7,18 @@ from .EDF_VD_mono import EDF_VD_mono
 from .ConfStaticEDFVD import static_optimal
 from simso.core.Criticality import Criticality
 from simso.core.Env import Env
+import config
 
+use_CC = config.use_CC
+idle_speed = config.idle_speed
+alpha = config.alpha
 
 @scheduler("simso.schedulers.EDF_VD_mono_LA_maxQoS")
 class EDF_VD_mono_LA_maxQoS(EDF_VD_mono):
 
     def init(self):
         self.ready_list = []
-        self.static_f_LO_LO, self.static_f_HI_LO, self.static_f_HI_HI, self.x = static_optimal(self.sim.task_list, 1, 0.2, 1, 2.5)
+        self.static_f_LO_LO, self.static_f_HI_LO, self.static_f_HI_HI, self.x = static_optimal(self.sim.task_list, 1, idle_speed, 1, alpha)
         for task in self.sim.task_list:
             if task.criticality == Criticality.HI:
                 task.deadline_offset = math.ceil(100 * (task.deadline * self.x - task.deadline)) / 100
@@ -22,27 +26,46 @@ class EDF_VD_mono_LA_maxQoS(EDF_VD_mono):
         self.action = None
         self.prev_cycle = 0
         
+        self.U_map_LO = {}
+        
+
 
     def on_pre_overrun(self, job):
         _, _, slack = self.slack()
         # Full speed when using slack on pre overrun. 
         self.processors[0].set_speed(1)
         job.set_pre_overrun_timer(max(0, slack))
-
-    def slack(self):
+        
+    def U(self):
         U = 0
-        if len(self.ready_list) == 0:
-            return 0, 0, 0
         if self.sim.mode == Criticality.LO:
             for job in self.ready_list:
                 if job.task.criticality == Criticality.LO:
-                    U += job.task.wcet / job.task.period
+                    U += (job.task.wcet / self.static_f_LO_LO) / job.task.period
                 else:
-                    U += job.task.wcet / (job.task.period + job.task.deadline_offset)
+                    U += (job.task.wcet / self.static_f_HI_LO) / (job.task.period + job.task.deadline_offset)
         else:
             for job in self.ready_list:
                 if job.task.criticality == Criticality.HI:
-                    U += job.task.wcet_high / job.task.period
+                    U += (job.task.wcet_high / self.static_f_HI_HI) / job.task.period
+        return U
+
+
+    def slack(self):
+        
+        if use_CC:
+            
+            U = 0
+            
+            
+            return
+        
+        
+        U = self.U()
+        
+        if len(self.ready_list) == 0:
+            return 0, 0, 0
+        
         if self.sim.mode == Criticality.LO:
             ranked_jobs = sorted(self.ready_list, key=lambda x: x.absolute_deadline, reverse=True)
         else:

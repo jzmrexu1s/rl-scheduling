@@ -2,41 +2,49 @@ import sys
 import time
 sys.path.append("..")
 from simso.core import Model
-from simso.core.Env import Env
-from simso.core.Scheduler import SchedulerInfo
 from simso.configuration import Configuration
 from PyQt5 import QtCore, QtWidgets
 from simsogui.Gantt import GanttConfigure, create_gantt_window
 from PyQt5.QtWidgets import QApplication
-from simsogui.SimulatorWindow import SimulatorWindow
 import optparse
-from rl.reacher import Reacher
 import rl.sac_classes as sac
-import numpy as np
 from gym.spaces.box import Box
 from torch.utils.tensorboard import SummaryWriter
 from simso.core.Criticality import Criticality
 import cProfile
+import pandas as pd
+import config
 
 start_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
 
-rl_train = True
-rl_test = False
+
+use_physical_state = config.use_physical_state
+task_count = 20
+random_task_sel = 2
+
+
+rl_train = False
+rl_test = True
 scheduler_class = "simso.schedulers.EDF_VD_mono_LA_RL"
 # scheduler_class = "simso.schedulers.EDF_VD_mono_LA_maxQoS"
 # scheduler_class = "simso.schedulers.EDF_VD_mono_LA"
-duration_ms = 80 * 1000
+# scheduler_class = "simso.schedulers.EDF_VD_mono_LA_between_random"
+# scheduler_class = "simso.schedulers.EDF_VD_mono_LA_between_uni"
+scheduler_class = "simso.schedulers.EDF_VD_mono_LA_between_physical"
+duration_ms = 80 * 1000 if use_physical_state else 20000
+# duration_ms = 80 * 1000
 profile = "profile4_alpha_3_minf_0.2"
-write_sim_log = True
-write_speed_log = True
+write_sim_log = False
+write_speed_log = False
+random_data_path = './randomdata/randomdata-2023-08-08-12-03-26.csv'
 
-rl_state_length = 15
+rl_state_length = 15 if use_physical_state else 5
 
 if scheduler_class == "simso.schedulers.EDF_VD_mono_LA" or scheduler_class == "simso.schedulers.EDF_VD_mono_LA_maxQoS":
     rl_train = False
     rl_test = False
 
-max_episodes = 500
+max_episodes = 1000
 replay_buffer_size = 1e6
 replay_buffer = sac.ReplayBuffer(replay_buffer_size)
 
@@ -45,7 +53,8 @@ action_range=1
 # hyper-parameters for RL training
 frame_idx   = 0
 batch_size  = 300
-explore_steps = 300  # for random action sampling in the beginning of training
+explore_steps = 300
+# explore_steps = 400  # for random action sampling in the beginning of training
 update_itr = 1
 AUTO_ENTROPY=True
 DETERMINISTIC=False
@@ -94,6 +103,14 @@ def post_train(model):
     gantt.show()
     sys.exit(app.exec_())
     
+def random_task_adder(configuration, df, taskset_idx):
+    for i in range(task_count):
+        row = df.iloc[task_count * 0 + i]
+        
+        configuration.add_task(name=row['name'], identifier=task_count * taskset_idx + i, period=row['period'],
+                    activation_date=0, wcet=row['wcet'], deadline=row['period'], wcet_high=row['wcet_high'], acet=row['wcet'], 
+                    criticality=row['criticality'], deadline_offset=0, abort_on_miss=True)
+    
 def init_rl(configuration):
     action_place = Box(0.0, 1.0, [1])
     # state: current_wcet, current_ret, U, a_ego, a_lead, v_ego, v_lead
@@ -111,6 +128,16 @@ def init_rl(configuration):
     configuration.scheduler_info.action_place = action_place
     configuration.scheduler_info.state_place = state_place
     return sac_trainer
+
+def calculate_utilization(configuration):
+    u = 0
+    hi_u = 0
+    for task in configuration.task_info_list:
+        u += task.wcet / task.period
+        if task.criticality == Criticality.HI:
+            hi_u += task.wcet_high / task.period
+    print("LO Utilization:", u, "HI Utilization:", hi_u)
+    return u, hi_u
 
 def main(argv):
     if len(argv) == 2:
@@ -135,25 +162,29 @@ def main(argv):
         configuration.scheduler_info.rl_train = rl_train
         configuration.scheduler_info.rl_test = rl_test
         
-        # ACC
-        configuration.add_task(name="T1", identifier=1, period=100,
-                               activation_date=0, wcet=12, deadline=100, wcet_high=36, acet=36, criticality="HI", deadline_offset=0, abort_on_miss=True)
-        # LKA
-        configuration.add_task(name="T2", identifier=2, period=100,
-                               activation_date=0, wcet=9, deadline=100, wcet_high=20, acet=20, criticality="HI", deadline_offset=0, abort_on_miss=True)
+        if use_physical_state:
+            # 固定任务
+            
+            # ACC
+            configuration.add_task(name="T1", identifier=1, period=100,
+                                activation_date=0, wcet=12, deadline=100, wcet_high=36, acet=36, criticality="HI", deadline_offset=0, abort_on_miss=True)
+            # LKA
+            configuration.add_task(name="T2", identifier=2, period=100,
+                                activation_date=0, wcet=9, deadline=100, wcet_high=20, acet=20, criticality="HI", deadline_offset=0, abort_on_miss=True)
+            
+            configuration.add_task(name="T3", identifier=3, period=80,
+                                activation_date=0, wcet=6, deadline=80, wcet_high=6, acet=6, criticality="LO", deadline_offset=0, abort_on_miss=True)
+            configuration.add_task(name="T4", identifier=4, period=100,
+                                activation_date=0, wcet=15, deadline=100, wcet_high=15, acet=15, criticality="LO", deadline_offset=0, abort_on_miss=True)
+            configuration.add_task(name="T5", identifier=5, period=200,
+                                activation_date=0, wcet=25, deadline=200, wcet_high=25, acet=25, criticality="LO", deadline_offset=0, abort_on_miss=True)
+            configuration.add_task(name="T6", identifier=6, period=200,
+                                    activation_date=0, wcet=40, deadline=200, wcet_high=40, acet=40, criticality="LO", deadline_offset=0, abort_on_miss=True)
+                    
+            # 模拟HI任务
+            # configuration.add_task(name="T7", identifier=7, period=80,
+            #                        activation_date=0, wcet=15, deadline=80, wcet_high=20, acet=20, criticality="HI", deadline_offset=0, abort_on_miss=True)
         
-        configuration.add_task(name="T3", identifier=3, period=80,
-                               activation_date=0, wcet=6, deadline=80, wcet_high=6, acet=6, criticality="LO", deadline_offset=0, abort_on_miss=True)
-        configuration.add_task(name="T4", identifier=4, period=100,
-                               activation_date=0, wcet=15, deadline=100, wcet_high=15, acet=15, criticality="LO", deadline_offset=0, abort_on_miss=True)
-        configuration.add_task(name="T5", identifier=5, period=200,
-                               activation_date=0, wcet=25, deadline=200, wcet_high=25, acet=25, criticality="LO", deadline_offset=0, abort_on_miss=True)
-        configuration.add_task(name="T6", identifier=6, period=200,
-                                activation_date=0, wcet=40, deadline=200, wcet_high=40, acet=40, criticality="LO", deadline_offset=0, abort_on_miss=True)
-                
-        # 模拟HI任务
-        # configuration.add_task(name="T7", identifier=7, period=80,
-        #                        activation_date=0, wcet=15, deadline=80, wcet_high=20, acet=20, criticality="HI", deadline_offset=0, abort_on_miss=True)
         
         # Add a processor:
         configuration.add_processor(name="CPU 1", identifier=1)
@@ -162,31 +193,36 @@ def main(argv):
         configuration.scheduler_info.clas = scheduler_class
 
         
-
-    configuration.check_all()
-    u = 0
-    hi_u = 0
-    for task in configuration.task_info_list:
-        u += task.wcet / task.period
-        if task.criticality == Criticality.HI:
-            hi_u += task.wcet_high / task.period
-    print("LO Utilization:", u, "HI Utilization:", hi_u)
+        calculate_utilization(configuration)
+    
+    
     
     if rl_train:
         
         writer = SummaryWriter("logs")
         
         sac_trainer = init_rl(configuration)
-        configuration.scheduler_info.additional_info = {"max_deadline": max([x.deadline for x in configuration.task_info_list]), "test": False}
         
         max_reward = -10000
+        
+        if not use_physical_state:
+            df = pd.read_csv(random_data_path)
+        
         for eps in range(max_episodes):
             
+            if not use_physical_state:
+                configuration.set_task_info_list([])
+                random_task_adder(configuration, df, eps)
+                
+            configuration.scheduler_info.additional_info = {"max_deadline": max([x.deadline for x in configuration.task_info_list]), "test": False}
+                        
             configuration.scheduler_info.episode_reward = 0
             if eps < 50:
                 configuration.scheduler_info.supervise_step = 0
             else:
                 configuration.scheduler_info.supervise_step = 0
+            
+            configuration.check_all()
 
             model = Model(configuration)
             model.run_model()
@@ -203,7 +239,10 @@ def main(argv):
                 post_train(model)
         
     if rl_test:
-        
+        if not use_physical_state:
+            df = pd.read_csv(random_data_path)
+            random_task_adder(configuration, df, random_task_sel)
+            calculate_utilization(configuration)
         sac_trainer = init_rl(configuration)
         sac_trainer.load_model(rl_model_path)
         configuration.scheduler_info.additional_info = {"max_deadline": max([x.deadline for x in configuration.task_info_list]), "test": True}
@@ -215,6 +254,11 @@ def main(argv):
         
 
     if not rl_train and not rl_test:
+        if not use_physical_state:
+            df = pd.read_csv(random_data_path)
+            random_task_adder(configuration, df, random_task_sel)
+            calculate_utilization(configuration)
+            
         model = Model(configuration)
         model.run_model()
         post_train(model)
