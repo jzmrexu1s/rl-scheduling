@@ -1,4 +1,5 @@
 import math
+import time
 
 import numpy as np
 from simso.core import Scheduler
@@ -27,6 +28,13 @@ class EDF_VD_mono_LA_maxQoS(EDF_VD_mono):
         self.prev_cycle = 0
         
         self.U_map_LO = {}
+        
+        self.call_count = 0
+        self.call_time = 0
+        
+        self.time_series = []
+        self.power_series = []
+        self.terminate_series = []
         
 
 
@@ -105,6 +113,18 @@ class EDF_VD_mono_LA_maxQoS(EDF_VD_mono):
         job.cpu.resched()
 
     def schedule(self, cpu):
+        
+        self.time_series.append(self.sim.now() / 1000000000)
+        if (self.sim.now() == 0):
+            self.power_series.append(0)
+        else:
+            self.power_series.append(self.sim.speed_logger.default_multi_range_power(0, self.sim.now()))
+        if len(self.terminate_series) == 0:
+            self.terminate_series.append(0)
+        else:
+            self.terminate_series.append(self.terminate_series[-1] + self.sim.etm.terminate_count)
+        
+        start_time = time.time()
 
         # if self.sim.now() % 10 == 9 and self.sim.now() % 100 == 9:
         #     return (None, cpu)
@@ -132,5 +152,10 @@ class EDF_VD_mono_LA_maxQoS(EDF_VD_mono):
                 return self.schedule(cpu)
             
             self.prev_state = self.state
-        
+            
+        end_time = time.time()
+        self.call_time += end_time - start_time
+        self.call_count += 1
+        self.sim.etm.reset_abort_count()
+        self.sim.etm.reset_terminate_count()
         return (job, cpu)

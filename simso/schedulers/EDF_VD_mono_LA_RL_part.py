@@ -19,8 +19,8 @@ update_itr = 1
 AUTO_ENTROPY = True
 step = 1000000000000
 
-@scheduler("simso.schedulers.EDF_VD_mono_LA_RL")
-class EDF_VD_mono_LA_RL(EDF_VD_mono):
+@scheduler("simso.schedulers.EDF_VD_mono_LA_RL_part")
+class EDF_VD_mono_LA_RL_part(EDF_VD_mono):
 
     def init(self):
         self.ready_list = []
@@ -39,10 +39,6 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         
         self.call_count = 0
         self.call_time = 0
-        
-        self.time_series = []
-        self.power_series = []
-        self.terminate_series = []
         
         
 
@@ -129,7 +125,8 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
     def get_reward(self, action):
         abort_count = self.sim.etm.abort_count
         terminate_count = self.sim.etm.terminate_count
-        
+        self.sim.etm.reset_abort_count()
+        self.sim.etm.reset_terminate_count()
         # if action < self.prev_min_speed:
         #     return -100
         energy_consumption = self.sim.speed_logger.default_multi_range_power(self.prev_cycle, self.sim.now())
@@ -173,16 +170,6 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
             return np.float64(min(1, math.ceil(100 * accurate_speed) / 100))
 
     def schedule(self, cpu):
-        
-        # self.time_series.append(self.sim.now() / 1000000000)
-        # if (self.sim.now() == 0):
-        #     self.power_series.append(0)
-        # else:
-        #     self.power_series.append(self.sim.speed_logger.default_multi_range_power(0, self.sim.now()))
-        # if len(self.terminate_series) == 0:
-        #     self.terminate_series.append(0)
-        # else:
-        #     self.terminate_series.append(self.terminate_series[-1] + self.sim.etm.terminate_count)
 
         if self.step >= step:
             self.sim.stopSimulation()
@@ -271,6 +258,5 @@ class EDF_VD_mono_LA_RL(EDF_VD_mono):
         end_time = time.time()
         self.call_time += end_time - start_time
         self.call_count += 1
-        self.sim.etm.reset_abort_count()
-        self.sim.etm.reset_terminate_count()
+        
         return (job, cpu)
